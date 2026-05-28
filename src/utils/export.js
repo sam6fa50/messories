@@ -1,5 +1,5 @@
-import { fmtTime, fmtCallDuration } from "./format.js";
-import { fmtDateHeader } from "./format.js";
+import { fmtTime, fmtCallDuration, fmtDateHeader } from "./format.js";
+import { resolveUri } from "./mediaStore.js";
 
 function dlBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -90,12 +90,10 @@ export async function exportPhotosZip(thread, onProgress) {
   thread.messages.forEach((m) => {
     const date = new Date(m.timestamp_ms).toISOString().slice(0, 10);
     (m.photos || []).forEach((p) => {
-      if (p.uri?.match(/^(blob:|http)/))
-        items.push({ uri: p.uri, name: `${date}_photo_${String(items.length + 1).padStart(4, "0")}.jpg` });
+      if (p.uri) items.push({ uri: p.uri, name: `${date}_photo_${String(items.length + 1).padStart(4, "0")}.jpg` });
     });
     (m.videos || []).forEach((v) => {
-      if (v.uri?.match(/^(blob:|http)/))
-        items.push({ uri: v.uri, name: `${date}_video_${String(items.length + 1).padStart(4, "0")}.mp4` });
+      if (v.uri) items.push({ uri: v.uri, name: `${date}_video_${String(items.length + 1).padStart(4, "0")}.mp4` });
     });
   });
 
@@ -104,14 +102,20 @@ export async function exportPhotosZip(thread, onProgress) {
   const { default: JSZip } = await import("jszip");
   const zip = new JSZip();
   let done = 0;
+  let found = 0;
 
   await Promise.all(
     items.map(async ({ uri, name }) => {
-      const blob = await fetch(uri).then((r) => r.blob());
+      const resolved = await resolveUri(uri);
+      if (!resolved) { onProgress?.(++done, items.length); return; }
+      const blob = await fetch(resolved).then((r) => r.blob());
       zip.file(name, blob);
+      found++;
       onProgress?.(++done, items.length);
     })
   );
+
+  if (!found) return "none";
 
   const zipBlob = await zip.generateAsync({
     type: "blob",

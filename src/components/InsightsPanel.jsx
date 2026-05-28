@@ -2,6 +2,28 @@ import { useMemo, useState, useEffect } from "react";
 import { threadStats } from "../utils/stats.js";
 import { fmtCallDuration, placeholderSrc } from "../utils/format.js";
 import { exportMarkdown, exportPhotosZip, exportPrint } from "../utils/export.js";
+import { resolveUri } from "../utils/mediaStore.js";
+
+function LazyMediaTile({ item, palette }) {
+  const [src, setSrc] = useState(() => {
+    const u = item.uri;
+    return u && (u.startsWith("blob:") || u.startsWith("http")) ? u : null;
+  });
+  useEffect(() => {
+    if (src) return;
+    resolveUri(item.uri).then((r) => { if (r) setSrc(r); });
+  }, [item.uri]);
+  const bg = src ? `url("${src}")` : `url("${placeholderSrc(item.uri, 400, 400, palette)}")`;
+  return (
+    <div className="ms-media-tile" style={{ backgroundImage: bg }}>
+      {item.isVideo && (
+        <span className="ms-media-tile-vid" aria-hidden="true">
+          <svg viewBox="0 0 10 10" width="10" height="10"><path d="M2.5 1.5 L8.5 5 L2.5 8.5 Z" fill="currentColor"/></svg>
+        </span>
+      )}
+    </div>
+  );
+}
 
 const WINDOWS = [
   { label: "3 mo",    ms: 90  * 86_400_000 },
@@ -165,21 +187,9 @@ export default function InsightsPanel({ thread, palette, onClose, open }) {
                 <section className="ms-insights-sec">
                   <h4>Media · {media.length}</h4>
                   <div className="ms-media-grid">
-                    {media.slice(0, 12).map((item, i) => {
-                      const isBlobUrl = item.uri && (item.uri.startsWith("blob:") || item.uri.startsWith("http"));
-                      const bg = isBlobUrl
-                        ? `url("${item.uri}")`
-                        : `url("${placeholderSrc(item.uri, 400, 400, palette)}")`;
-                      return (
-                        <div key={i} className="ms-media-tile" style={{ backgroundImage: bg }}>
-                          {item.isVideo && (
-                            <span className="ms-media-tile-vid" aria-hidden="true">
-                              <svg viewBox="0 0 10 10" width="10" height="10"><path d="M2.5 1.5 L8.5 5 L2.5 8.5 Z" fill="currentColor"/></svg>
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {media.slice(0, 12).map((item, i) => (
+                    <LazyMediaTile key={i} item={item} palette={palette} />
+                  ))}
                   </div>
                 </section>
               )}

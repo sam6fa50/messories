@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { fmtTime, fmtFullDateTime, placeholderSrc } from "../utils/format.js";
 import Avatar from "./Avatar.jsx";
 import VoiceMessage from "./VoiceMessage.jsx";
@@ -39,7 +40,7 @@ function ReactionsRow({ reactions, mine }) {
   );
 }
 
-export default function MessageRow({ msg, firstInRun, lastInRun, endsBlock, palette, density, profile, onJump, onScrollToMsg, onOpenMedia, highlight }) {
+const MessageRow = memo(function MessageRow({ msg, firstInRun, lastInRun, endsBlock, palette, density, profile, onJump, onScrollToMsg, onOpenMedia, highlight }) {
   const mine = msg.sender_name === "You";
 
   if (msg.is_call) {
@@ -139,4 +140,6 @@ export default function MessageRow({ msg, firstInRun, lastInRun, endsBlock, pale
       )}
     </>
   );
-}
+});
+
+export default MessageRow;

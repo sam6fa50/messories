@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { fmtTime, fmtDateHeader, fmtFullDateTime, fmtAudioDuration, placeholderSrc } from "../utils/format.js";
+import { resolveUri } from "../utils/mediaStore.js";
 
 // ── Video player with custom controls ───────────────────────────────────────
 
@@ -12,7 +13,18 @@ function VideoPlayer({ item, palette }) {
   const [duration, setDuration] = useState(item.duration_s || 30);
   const [scrubbing, setScrubbing] = useState(false);
 
-  const isBlobUrl = item.uri && (item.uri.startsWith("blob:") || item.uri.startsWith("http"));
+  const [resolvedUri, setResolvedUri] = useState(() => {
+    const u = item.uri;
+    return u && (u.startsWith("blob:") || u.startsWith("http")) ? u : null;
+  });
+  useEffect(() => {
+    const u = item.uri;
+    if (u && (u.startsWith("blob:") || u.startsWith("http"))) { setResolvedUri(u); return; }
+    setResolvedUri(null);
+    resolveUri(u).then(setResolvedUri);
+  }, [item.uri]);
+
+  const isBlobUrl = !!resolvedUri;
   const aspect = item.width && item.height ? `${item.width} / ${item.height}` : "4 / 3";
 
   useEffect(() => {
@@ -21,7 +33,7 @@ function VideoPlayer({ item, palette }) {
   }, [item.uri]);
 
   useEffect(() => {
-    if (!isBlobUrl) return;
+    if (!resolvedUri) return;
     const vid = videoRef.current;
     if (!vid) return;
     const onTime = () => { if (vid.duration) setProgress(vid.currentTime / vid.duration); };
@@ -35,7 +47,7 @@ function VideoPlayer({ item, palette }) {
       vid.removeEventListener("durationchange", onDur);
       vid.removeEventListener("ended", onEnd);
     };
-  }, [isBlobUrl, item.uri]);
+  }, [resolvedUri]);
 
   useEffect(() => {
     if (!isBlobUrl) return;
@@ -93,8 +105,8 @@ function VideoPlayer({ item, palette }) {
 
   return (
     <div className="ms-mv-frame ms-mv-vidframe" style={{ aspectRatio: aspect }} data-paused={!playing ? "" : undefined}>
-      {isBlobUrl ? (
-        <video ref={videoRef} src={item.uri} playsInline preload="metadata"
+      {resolvedUri ? (
+        <video ref={videoRef} src={resolvedUri} playsInline preload="metadata"
           style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: "6px 6px 0 0", display: "block" }}
           onClick={togglePlay} />
       ) : (
@@ -133,11 +145,22 @@ function ZoomablePhoto({ item, palette }) {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
+  const [resolvedUri, setResolvedUri] = useState(() => {
+    const u = item.uri;
+    return u && (u.startsWith("blob:") || u.startsWith("http")) ? u : null;
+  });
   const wrapRef = useRef(null);
   const dragAnchor = useRef(null);
   const lastPinchDist = useRef(null);
 
-  const isBlobUrl = item.uri && (item.uri.startsWith("blob:") || item.uri.startsWith("http"));
+  useEffect(() => {
+    const u = item.uri;
+    if (u && (u.startsWith("blob:") || u.startsWith("http"))) { setResolvedUri(u); return; }
+    setResolvedUri(null);
+    resolveUri(u).then(setResolvedUri);
+  }, [item.uri]);
+
+  const isBlobUrl = !!resolvedUri;
   const aspect = item.width && item.height ? `${item.width} / ${item.height}` : "4 / 3";
 
   useEffect(() => { setScale(1); setOffset({ x: 0, y: 0 }); }, [item.uri]);
@@ -241,8 +264,8 @@ function ZoomablePhoto({ item, palette }) {
           willChange: isZoomed ? "transform" : "auto",
         }}
       >
-        {isBlobUrl ? (
-          <img src={item.uri} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: 6, userSelect: "none" }} draggable={false} />
+        {resolvedUri ? (
+          <img src={resolvedUri} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: 6, userSelect: "none" }} draggable={false} />
         ) : (
           <div className="ms-mv-img" style={{ backgroundImage: `url("${placeholderSrc(item.uri, item.width, item.height, palette)}")` }} />
         )}
@@ -251,6 +274,26 @@ function ZoomablePhoto({ item, palette }) {
         <div className="ms-mv-zoom-hint" aria-hidden="true">double-click to reset</div>
       )}
     </div>
+  );
+}
+
+// ── Lazy thumbnail ───────────────────────────────────────────────────────────
+
+function LazyThumb({ item, idx, active, palette, onSelect }) {
+  const [src, setSrc] = useState(() => {
+    const u = item.uri;
+    return u && (u.startsWith("blob:") || u.startsWith("http")) ? u : null;
+  });
+  useEffect(() => {
+    if (src) return;
+    resolveUri(item.uri).then((r) => { if (r) setSrc(r); });
+  }, [item.uri]);
+  const bg = src ? `url("${src}")` : `url("${placeholderSrc(item.uri, 200, 200, palette)}")`;
+  return (
+    <button data-thumb-idx={idx} className={`ms-mv-thumb ${active ? "ms-mv-thumb-on" : ""}`} onClick={onSelect} aria-label={`Item ${idx + 1}`}>
+      <div className="ms-mv-thumb-img" style={{ backgroundImage: bg }} />
+      {item.isVideo && <span className="ms-mv-thumb-vid"><svg width="9" height="9" viewBox="0 0 10 10"><path d="M3 1.5 V8.5 L8.5 5 Z" fill="currentColor"/></svg></span>}
+    </button>
   );
 }
 
@@ -298,11 +341,11 @@ export default function MediaViewer({ items, index, palette, onClose, onIndex, o
   const item = items[index];
   if (!item) return null;
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    const resolved = await resolveUri(item.uri);
+    const href = resolved || item.uri;
     const a = document.createElement("a");
-    a.href = (item.uri.startsWith("blob:") || item.uri.startsWith("http"))
-      ? item.uri
-      : placeholderSrc(item.uri, item.width, item.height, palette);
+    a.href = href;
     const stem = (item.uri || "media").replace(/[^a-z0-9-]/gi, "_").slice(0, 40);
     a.download = `messories-${stem}${item.isVideo ? ".mp4" : ".jpg"}`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -367,16 +410,9 @@ export default function MediaViewer({ items, index, palette, onClose, onIndex, o
       {/* Thumbnails — stops propagation */}
       {items.length > 1 && (
         <div className="ms-mv-thumbs" onClick={(e) => e.stopPropagation()} ref={thumbRowRef}>
-          {items.map((it, i) => {
-            const isBlobUrl = it.uri && (it.uri.startsWith("blob:") || it.uri.startsWith("http"));
-            const bg = isBlobUrl ? `url("${it.uri}")` : `url("${placeholderSrc(it.uri, 200, 200, palette)}")`;
-            return (
-              <button key={i} data-thumb-idx={i} className={`ms-mv-thumb ${i === index ? "ms-mv-thumb-on" : ""}`} onClick={() => onIndex(i)} aria-label={`Item ${i + 1}`}>
-                <div className="ms-mv-thumb-img" style={{ backgroundImage: bg }} />
-                {it.isVideo && <span className="ms-mv-thumb-vid"><svg width="9" height="9" viewBox="0 0 10 10"><path d="M3 1.5 V8.5 L8.5 5 Z" fill="currentColor"/></svg></span>}
-              </button>
-            );
-          })}
+          {items.map((it, i) => (
+            <LazyThumb key={i} item={it} idx={i} active={i === index} palette={palette} onSelect={() => onIndex(i)} />
+          ))}
         </div>
       )}
     </div>

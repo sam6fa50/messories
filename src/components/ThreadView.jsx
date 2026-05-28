@@ -77,14 +77,15 @@ export default function ThreadView({ thread, palette, density, onToggleInsights,
     return map;
   }, [thread.id]);
 
-  const decorated = thread.messages.map((m) => ({
+  const decorated = useMemo(() => thread.messages.map((m) => ({
     ...m,
     _avatarColor: m.sender_name === "You" ? profile?.avatarColor : senderColors[m.sender_name],
     _avatarInitials: m.sender_name === "You"
       ? (profile?.initials || "Y")
       : m.sender_name.split(" ").map((s) => s[0]).slice(0, 2).join(""),
-  }));
-  const grouped = groupMessages(decorated);
+  })), [thread.id, thread.messages, senderColors, profile]);
+
+  const grouped = useMemo(() => groupMessages(decorated), [decorated]);
 
   const handleCallJump = useCallback((pairId, kind) => {
     const root = scrollRef.current;

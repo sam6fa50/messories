@@ -128,6 +128,7 @@ img { display: block; max-width: 100%; }
 .ms-link { appearance: none; background: none; border: none; padding: 4px 0; font-family: var(--ms-sans); font-size: 14px; font-weight: 500; color: var(--p-accent); cursor: pointer; border-bottom: 0.5px solid var(--p-accent); }
 .ms-link:hover { color: var(--p-ink); border-color: var(--p-ink); }
 .ms-parse { border: 0.5px solid var(--p-line); background: color-mix(in srgb, var(--p-panel) 60%, transparent); padding: 24px; border-radius: 8px; min-height: 280px; }
+.ms-parse-done { min-height: 0; }
 .ms-parse-head { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; }
 .ms-parse-spin { width: 18px; height: 18px; border: 1.5px solid var(--p-line); border-top-color: var(--p-accent); border-radius: 50%; animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -198,14 +199,14 @@ img { display: block; max-width: 100%; }
 .ms-thread-scroll { flex: 1; overflow-y: auto; padding: 16px 0 24px; }
 .ms-thread-archive-mark { text-align: center; font-family: var(--ms-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--p-ink-muted); text-transform: lowercase; margin: 4px 0 24px; }
 .ms-msglist { display: flex; flex-direction: column; gap: 0; padding: 0 24px; max-width: 760px; margin: 0 auto; }
-.ms-date-sep { display: flex; align-items: center; justify-content: center; margin: 22px 0 12px; font-family: var(--ms-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--p-ink-muted); }
+.ms-date-sep { display: flex; align-items: center; justify-content: center; margin: 22px 0 12px; font-family: var(--ms-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--p-ink-muted); content-visibility: auto; contain-intrinsic-size: auto 56px; }
 .ms-date-sep span { padding: 0 14px; position: relative; }
 .ms-date-sep span::before, .ms-date-sep span::after { content: ""; position: absolute; top: 50%; width: 32px; height: 0.5px; background: var(--p-line); }
 .ms-date-sep span::before { right: 100%; }
 .ms-date-sep span::after { left: 100%; }
 
 /* ── ROWS ── */
-.ms-row { display: flex; gap: 10px; align-items: flex-start; position: relative; }
+.ms-row { display: flex; gap: 10px; align-items: flex-start; position: relative; content-visibility: auto; contain-intrinsic-size: auto 72px; }
 .ms-row-mine { flex-direction: row-reverse; }
 .ms-row-start { margin-top: 10px; }
 .ms-row-stack { margin-top: 2px; }

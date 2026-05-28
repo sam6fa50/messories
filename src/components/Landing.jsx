@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { parseInstagramZip } from "../utils/parser.js";
 import { saveArchive, loadSavedMeta, loadArchiveFile, clearArchive, fmtBytes, fmtAgo } from "../utils/storage.js";
+import { clearZip } from "../utils/mediaStore.js";
 
 export default function Landing({ onLoadDemo, onDataLoaded }) {
   const [drag, setDrag] = useState(false);
@@ -110,7 +111,7 @@ export default function Landing({ onLoadDemo, onDataLoaded }) {
                     <button className="ms-btn ms-btn-primary" onClick={handleRestore} disabled={restoring}>
                       {restoring ? "Loading…" : "Restore →"}
                     </button>
-                    <button className="ms-btn ms-btn-ghost ms-restore-clear" onClick={async () => { await clearArchive(); setSavedMeta(null); }} title="Forget saved archive" aria-label="Forget saved archive">×</button>
+                    <button className="ms-btn ms-btn-ghost ms-restore-clear" onClick={async () => { await clearArchive(); clearZip(); setSavedMeta(null); }} title="Forget saved archive" aria-label="Forget saved archive">×</button>
                   </div>
                 </div>
               )}
@@ -178,7 +179,7 @@ export default function Landing({ onLoadDemo, onDataLoaded }) {
           )}
 
           {phase === "done" && (
-            <div className="ms-parse">
+            <div className="ms-parse ms-parse-done">
               <div className="ms-parse-title">Ready. Opening your archive…</div>
             </div>
           )}

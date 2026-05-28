@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { fmtAudioDuration, strHash } from "../utils/format.js";
+import { resolveUri } from "../utils/mediaStore.js";
 
 export default function VoiceMessage({ audio, mine }) {
   const [playing, setPlaying] = useState(false);
@@ -7,12 +8,22 @@ export default function VoiceMessage({ audio, mine }) {
   const [scrubbing, setScrubbing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errored, setErrored] = useState(false);
+  const [resolvedUri, setResolvedUri] = useState(() => {
+    const u = audio.uri;
+    return u && (u.startsWith("blob:") || u.startsWith("http")) ? u : null;
+  });
   const trackRef = useRef(null);
   const tickRef = useRef(null);
   const audioRef = useRef(null);
   const dur = audio.duration_s || 30;
 
-  const isBlobUrl = audio.uri && (audio.uri.startsWith("blob:") || audio.uri.startsWith("http"));
+  useEffect(() => {
+    const u = audio.uri;
+    if (u && (u.startsWith("blob:") || u.startsWith("http"))) { setResolvedUri(u); return; }
+    resolveUri(u).then(setResolvedUri);
+  }, [audio.uri]);
+
+  const isBlobUrl = !!resolvedUri;
 
   // Reset state when audio source changes
   useEffect(() => {
@@ -24,8 +35,8 @@ export default function VoiceMessage({ audio, mine }) {
 
   // Build Audio element for real URIs
   useEffect(() => {
-    if (!isBlobUrl) return;
-    const el = new Audio(audio.uri);
+    if (!resolvedUri) return;
+    const el = new Audio(resolvedUri);
     el.preload = "metadata";
     el.addEventListener("timeupdate", () => {
       if (el.duration && isFinite(el.duration)) setProgress(el.currentTime / el.duration);
@@ -43,7 +54,7 @@ export default function VoiceMessage({ audio, mine }) {
     el.addEventListener("canplay", () => setLoading(false));
     audioRef.current = el;
     return () => { el.pause(); el.src = ""; audioRef.current = null; };
-  }, [audio.uri, isBlobUrl]);
+  }, [resolvedUri]);
 
   // Drive playback
   useEffect(() => {
@@ -170,7 +181,7 @@ export default function VoiceMessage({ audio, mine }) {
           onClick={(e) => {
             e.stopPropagation();
             const a = document.createElement("a");
-            a.href = audio.uri;
+            a.href = resolvedUri;
             a.download = `voice-${strHash(audio.uri)}.m4a`;
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
           }}

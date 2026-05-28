@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { setZip } from "./mediaStore.js";
 
 // Instagram exports all text as mojibake: UTF-8 bytes stored as Latin-1 chars.
 // This is a known quirk of Meta's data export format.
@@ -50,7 +51,7 @@ function initialsFor(name) {
 let _msgId = 0;
 let _callPairId = 0;
 
-function buildCallMessages(raw, mediaBlobs) {
+function buildCallMessages(raw) {
   const base = {
     sender_name: raw.sender_name,
     content: null,
@@ -83,10 +84,10 @@ function buildCallMessages(raw, mediaBlobs) {
   ];
 }
 
-function parseRawMessage(raw, mediaBlobs) {
+function parseRawMessage(raw) {
   // Handle call events
   if (raw.type === "Call" || raw.type === "Video Chat" || raw.call_duration != null) {
-    return buildCallMessages(raw, mediaBlobs);
+    return buildCallMessages(raw);
   }
 
   const msg = {
@@ -102,30 +103,27 @@ function parseRawMessage(raw, mediaBlobs) {
   // Photos
   if (raw.photos && raw.photos.length) {
     msg.photos = raw.photos.map((p) => ({
-      uri: mediaBlobs[p.uri] || p.uri,
+      uri: p.uri,
       width: 1080,
       height: 1080,
-      _originalUri: p.uri,
     }));
   }
 
   // Videos
   if (raw.videos && raw.videos.length) {
     msg.videos = raw.videos.map((v) => ({
-      uri: mediaBlobs[v.uri] || v.uri,
+      uri: v.uri,
       duration_s: v.duration_ms ? v.duration_ms / 1000 : 0,
       width: 1080,
       height: 1920,
-      _originalUri: v.uri,
     }));
   }
 
   // Audio
   if (raw.audio_files && raw.audio_files.length) {
     msg.audio_files = raw.audio_files.map((a) => ({
-      uri: mediaBlobs[a.uri] || a.uri,
+      uri: a.uri,
       duration_s: a.duration_ms ? a.duration_ms / 1000 : 30,
-      _originalUri: a.uri,
     }));
   }
 
@@ -151,26 +149,6 @@ function parseRawMessage(raw, mediaBlobs) {
   return [msg];
 }
 
-async function loadMediaBlobs(zip, paths) {
-  const blobs = {};
-  await Promise.all(
-    paths.map(async (path) => {
-      // Normalize path separators
-      const normalized = path.replace(/\\/g, "/");
-      let file = zip.file(normalized);
-      // Try with and without leading slash
-      if (!file) file = zip.file(normalized.replace(/^\//, ""));
-      if (!file) return;
-      try {
-        const blob = await file.async("blob");
-        blobs[path] = URL.createObjectURL(blob);
-      } catch {
-        // media file not loadable — leave as original path
-      }
-    })
-  );
-  return blobs;
-}
 
 export async function parseInstagramZip(file, onProgress) {
   _msgId = 0;
@@ -184,6 +162,7 @@ export async function parseInstagramZip(file, onProgress) {
   } catch {
     throw new Error("Could not open ZIP file. Make sure it's a valid Instagram data export.");
   }
+  setZip(zip);
 
   onProgress?.("Scanning message folders…", 8);
 
@@ -267,20 +246,10 @@ export async function parseInstagramZip(file, onProgress) {
 
     if (!allMessages.length) continue;
 
-    // Collect all media URIs referenced in messages
-    const mediaPaths = new Set();
-    allMessages.forEach((m) => {
-      (m.photos || []).forEach((p) => mediaPaths.add(p.uri));
-      (m.videos || []).forEach((v) => mediaPaths.add(v.uri));
-      (m.audio_files || []).forEach((a) => mediaPaths.add(a.uri));
-    });
-
-    const mediaBlobs = await loadMediaBlobs(zip, [...mediaPaths]);
-
     // Parse messages
     const parsed = [];
     for (const raw of allMessages) {
-      const msgs = parseRawMessage(raw, mediaBlobs);
+      const msgs = parseRawMessage(raw);
       parsed.push(...msgs);
     }
 
