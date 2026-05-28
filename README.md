@@ -1,16 +1,32 @@
-# React + Vite
+# Messories
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> A purely vibe coded project. Built to test what end-to-end AI-assisted development actually feels like in practice.
 
-Currently, two official plugins are available:
+A local-only Instagram message archive viewer. Drop in your Instagram data export and browse your full conversation history — reactions, voice notes, photos, replies, and all. Nothing ever leaves your browser.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## What it does
 
-## React Compiler
+- Parses Instagram `.zip` data exports entirely in-browser (no server, no upload)
+- Renders threaded conversations with media, voice messages, reactions, and replies
+- Full-text search across all threads
+- Insights panel with activity charts, call stats, and time-windowed breakdowns
+- Export to markdown, PDF (print), or a zip of all photos/videos
+- 9 colour palettes, font and density tweaks, PWA-installable
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech
 
-## Expanding the ESLint configuration
+React + Vite, JSZip for archive parsing, IndexedDB for archive persistence, zero backend.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Self-hosting
+
+```bash
+npm install
+npm run dev       # localhost:5173
+npm run build     # static output in dist/
+```
+
+Serve the `dist/` folder from any static host (nginx, Caddy, S3, GitHub Pages).
+
+## License
+
+MIT — see [LICENSE](./LICENSE).
