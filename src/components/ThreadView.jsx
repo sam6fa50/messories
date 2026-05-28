@@ -8,16 +8,19 @@ import { fmtYearRange } from "../utils/format.js";
 
 const SENDER_PALETTE = ["#b8836b", "#a64b2a", "#5c6b5a", "#6b7a99", "#3a2a1f", "#8c6a4a"];
 
-// Estimated row heights for virtualizer initial pass
 function estimateSize(item) {
-  if (item.kind === "date") return 56;
+  if (item.kind === "date") return 50;
   const m = item.msg;
-  if (m.is_call) return 72;
-  let h = item.firstInRun ? 52 : 36;
-  if (m.photos || m.videos) h += 280;
+  if (m.is_call) return 66;
+  let h = item.firstInRun ? 50 : 34;
+  if (m.photos || m.videos) {
+    const n = (m.photos?.length || 0) + (m.videos?.length || 0);
+    h += n === 1 ? 300 : n === 2 ? 188 : 372;
+  }
   if (m.audio_files) h += 64;
-  if (m.reactions?.length) h += 28;
-  if (m.reply_to) h += 40;
+  if (m.share) h += 72;
+  if (m.reactions?.length) h += 30;
+  if (m.reply_to) h += 44;
   return h;
 }
 
@@ -160,10 +163,11 @@ export default function ThreadView({ thread, palette, density, onToggleInsights,
             <span>Loading messages…</span>
           </div>
         ) : (
-          <div style={{ height: totalSize, position: "relative" }}>
-            <div className="ms-thread-archive-mark" style={{ position: "absolute", top: 0, left: 0, right: 0 }}>
+          <>
+            <div className="ms-thread-archive-mark ms-msglist">
               archived · read-only · loaded {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </div>
+            <div style={{ height: totalSize, position: "relative" }}>
             {virtualItems.map((vRow) => {
               const item = grouped[vRow.index];
               return (
@@ -195,7 +199,8 @@ export default function ThreadView({ thread, palette, density, onToggleInsights,
                 </div>
               );
             })}
-          </div>
+            </div>
+          </>
         )}
       </div>
 

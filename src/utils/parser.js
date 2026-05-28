@@ -44,6 +44,20 @@ export async function parseInstagramZip(file, onProgress) {
   let msgId = 0;
   let callPairId = 0;
 
+  // Instagram system message patterns to discard entirely
+  const NOISE_RE = /^(you )?liked (a|an|your|their) (message|photo|video|audio|reel|story|post|sticker)\.?$/i;
+
+  // Content strings that represent a call (type=Generic in newer exports)
+  function matchCallContent(content) {
+    const c = content.trim();
+    const low = c.toLowerCase();
+    if (/video (call|chat)/i.test(c)) return { isVideo: true,  missed: /missed/i.test(c) };
+    if (/audio (call|chat)/i.test(c)) return { isVideo: false, missed: /missed/i.test(c) };
+    if (/^(you )?missed a call$/i.test(c))  return { isVideo: false, missed: true };
+    if (/^(you )?called$/i.test(c))         return { isVideo: false, missed: false };
+    return null;
+  }
+
   function buildCallMsgs(raw) {
     const base = {
       sender_name: raw.sender_name,
@@ -51,7 +65,7 @@ export async function parseInstagramZip(file, onProgress) {
       is_call: true,
       call_duration: raw.call_duration || 0,
       is_video_call: raw.type === "Video Chat" || raw.type === "video_call",
-      call_outcome: raw.missed ? "missed" : raw.call_duration > 0 ? "completed" : "missed",
+      call_outcome: raw._outcome || (raw.missed ? "missed" : raw.call_duration > 0 ? "completed" : "missed"),
       call_participants: raw.participants ? raw.participants.map((p) => p.name || p) : null,
     };
     if (base.call_outcome !== "completed" || base.call_duration <= 0) {
@@ -69,11 +83,19 @@ export async function parseInstagramZip(file, onProgress) {
     if (raw.type === "Call" || raw.type === "Video Chat" || raw.call_duration != null) {
       return buildCallMsgs(raw);
     }
+    const content = raw.content || "";
+    // Drop Instagram meta-messages (liked a message, etc.)
+    if (NOISE_RE.test(content.trim())) return [];
+    // Convert content-based call indicators (newer export format)
+    const callMatch = matchCallContent(content);
+    if (callMatch) {
+      return buildCallMsgs({ ...raw, type: callMatch.isVideo ? "Video Chat" : "Call", call_duration: 0, _outcome: callMatch.missed ? "missed" : "completed" });
+    }
     const msg = {
       id: ++msgId,
       sender_name: raw.sender_name,
       timestamp_ms: raw.timestamp_ms,
-      content: raw.content || null,
+      content: content || null,
       reactions: raw.reactions ? raw.reactions.map((r) => ({ actor: r.actor, reaction: r.reaction })) : undefined,
     };
     if (raw.photos?.length) msg.photos = raw.photos.map((p) => ({ uri: p.uri, width: 1080, height: 1080 }));

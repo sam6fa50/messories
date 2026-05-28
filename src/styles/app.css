@@ -635,6 +635,67 @@ a.ms-share-link:hover .ms-share-ext { opacity: 1; color: var(--p-accent); transf
   font-family: var(--ms-mono); font-size: 11px;
 }
 
+/* ── STAT CARD WIDE ── */
+.ms-stat-card-wide { grid-column: 1 / -1; }
+
+/* ── ON THIS DAY ── */
+.ms-otd-list { display: flex; flex-direction: column; gap: 10px; }
+.ms-otd-item { display: flex; gap: 12px; align-items: flex-start; }
+.ms-otd-year {
+  font-family: var(--ms-mono); font-size: 10px; letter-spacing: 0.07em;
+  color: var(--p-accent); text-transform: uppercase; flex-shrink: 0;
+  padding-top: 2px; min-width: 34px;
+}
+.ms-otd-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ms-otd-sender {
+  font-family: var(--ms-mono); font-size: 10px; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--p-ink-muted); display: block;
+}
+.ms-otd-text {
+  font-family: var(--ms-serif); font-size: 13px; color: var(--p-ink);
+  line-height: 1.45; word-break: break-word;
+}
+.ms-otd-sec { border-left: 2px solid var(--p-accent); padding-left: 12px; }
+
+/* ── FIRST MESSAGE ── */
+.ms-first-msg {
+  border: 0.5px solid var(--p-line);
+  background: color-mix(in srgb, var(--p-panel) 50%, transparent);
+  border-radius: 6px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.ms-first-msg-date {
+  font-family: var(--ms-mono); font-size: 10px; color: var(--p-ink-muted);
+  letter-spacing: 0.04em;
+}
+.ms-first-msg-sender {
+  font-family: var(--ms-mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--p-accent);
+}
+.ms-first-msg-text {
+  font-family: var(--ms-serif); font-size: 14px; color: var(--p-ink);
+  line-height: 1.5; font-style: italic; margin-top: 2px; word-break: break-word;
+}
+
+/* ── MEDIA PAGINATION ── */
+.ms-media-pager {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  margin-top: 10px;
+}
+.ms-pager-btn {
+  appearance: none; border: 0.5px solid var(--p-line); background: transparent;
+  color: var(--p-ink); font-size: 18px; width: 28px; height: 28px;
+  border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center;
+  justify-content: center; transition: background .12s, border-color .12s;
+  line-height: 1; padding-bottom: 1px;
+}
+.ms-pager-btn:hover:not(:disabled) { background: var(--p-panel); border-color: var(--p-accent); }
+.ms-pager-btn:disabled { opacity: 0.3; cursor: default; }
+.ms-pager-info {
+  font-family: var(--ms-mono); font-size: 11px; color: var(--p-ink-muted);
+  font-variant-numeric: tabular-nums; letter-spacing: 0.04em;
+}
+
 /* ── VOICE SPINNER ── */
 .ms-voice-spin { animation: spin 0.9s linear infinite; display: block; }
 

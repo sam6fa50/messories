@@ -180,6 +180,7 @@ export default function App() {
           palette={palette}
           onClose={() => setInsightsOpen(false)}
           open={insightsOpen}
+          profile={profile}
         />
       )}
 

@@ -13,6 +13,7 @@ export function threadStats(thread, since = 0) {
   let callsMissed = 0, callsCompleted = 0;
   let secondsOnCall = 0, longestCall = 0, longestCallVideo = false;
   let minTs = Infinity, maxTs = -Infinity;
+  const dayCounts = {};
 
   for (const m of msgs) {
     if (m.timestamp_ms < minTs) minTs = m.timestamp_ms;
@@ -39,13 +40,20 @@ export function threadStats(thread, since = 0) {
     if (m.audio_files) voice += m.audio_files.length;
     if (m.photos)      imgs  += m.photos.length;
     if (m.videos)      vids  += m.videos.length;
-    hist[new Date(m.timestamp_ms).getHours()]++;
+    const d = new Date(m.timestamp_ms);
+    hist[d.getHours()]++;
+    const dayKey = d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    dayCounts[dayKey] = (dayCounts[dayKey] || 0) + 1;
     if (m.reactions) for (const r of m.reactions) {
       emojiCount[r.reaction] = (emojiCount[r.reaction] || 0) + 1;
     }
   }
 
   const topEmoji = Object.entries(emojiCount).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  let peakDay = null, peakDayCount = 0;
+  for (const [day, n] of Object.entries(dayCounts)) {
+    if (n > peakDayCount) { peakDayCount = n; peakDay = day; }
+  }
   const safeMin = isFinite(minTs) ? minTs : thread.first_message_ms;
   const safeMax = isFinite(maxTs) ? maxTs : thread.last_message_ms;
 
@@ -57,6 +65,7 @@ export function threadStats(thread, since = 0) {
     voice, imgs, vids,
     hist,
     yearRange: fmtYearRange(safeMin, safeMax),
+    peakDay, peakDayCount,
     calls: {
       total: callsTotal, video: callsVideo, audio: callsAudio,
       missed: callsMissed, completed: callsCompleted,
