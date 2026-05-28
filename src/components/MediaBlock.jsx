@@ -36,10 +36,10 @@ function MediaTile({ item, index, palette, onOpenItem, tileCls, style }) {
       }}
       aria-label={item.isVideo ? "Open video" : "Open photo"}
     >
-      {item.isVideo && src && (
+      {item.isVideo && (
         <video
-          src={src}
-          preload="metadata"
+          src={src || undefined}
+          preload={src ? "metadata" : "none"}
           muted
           playsInline
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}

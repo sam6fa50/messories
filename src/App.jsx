@@ -181,6 +181,10 @@ export default function App() {
           onClose={() => setInsightsOpen(false)}
           open={insightsOpen}
           profile={profile}
+          onJumpToMessage={(mid) => {
+            setInsightsOpen(false);
+            setPendingJump({ threadId: activeThread.id, msgId: mid, ts: Date.now() });
+          }}
         />
       )}
 

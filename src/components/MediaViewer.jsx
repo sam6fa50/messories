@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { fmtTime, fmtDateHeader, fmtFullDateTime, fmtAudioDuration, placeholderSrc } from "../utils/format.js";
-import { resolveUri } from "../utils/mediaStore.js";
+import { resolveUri, isZipReady } from "../utils/mediaStore.js";
 
 // ── Video player with custom controls ───────────────────────────────────────
 
@@ -21,7 +21,14 @@ function VideoPlayer({ item, palette }) {
     const u = item.uri;
     if (u && (u.startsWith("blob:") || u.startsWith("http"))) { setResolvedUri(u); return; }
     setResolvedUri(null);
-    resolveUri(u).then(setResolvedUri);
+    let cancelled = false, timerId;
+    const attempt = () => resolveUri(u).then((r) => {
+      if (cancelled) return;
+      if (r) setResolvedUri(r);
+      else if (!isZipReady()) timerId = setTimeout(attempt, 600);
+    });
+    attempt();
+    return () => { cancelled = true; clearTimeout(timerId); };
   }, [item.uri]);
 
   const isBlobUrl = !!resolvedUri;
@@ -157,7 +164,14 @@ function ZoomablePhoto({ item, palette }) {
     const u = item.uri;
     if (u && (u.startsWith("blob:") || u.startsWith("http"))) { setResolvedUri(u); return; }
     setResolvedUri(null);
-    resolveUri(u).then(setResolvedUri);
+    let cancelled = false, timerId;
+    const attempt = () => resolveUri(u).then((r) => {
+      if (cancelled) return;
+      if (r) setResolvedUri(r);
+      else if (!isZipReady()) timerId = setTimeout(attempt, 600);
+    });
+    attempt();
+    return () => { cancelled = true; clearTimeout(timerId); };
   }, [item.uri]);
 
   const isBlobUrl = !!resolvedUri;

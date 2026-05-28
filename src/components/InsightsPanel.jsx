@@ -3,10 +3,11 @@ import { threadStats } from "../utils/stats.js";
 import { fmtCallDuration, fmtDateHeader, fmtTime, placeholderSrc } from "../utils/format.js";
 import { exportMarkdown, exportPhotosZip, exportPrint } from "../utils/export.js";
 import { resolveUri, isZipReady } from "../utils/mediaStore.js";
+import MediaViewer from "./MediaViewer.jsx";
 
 const PAGE_SIZE = 12;
 
-function LazyMediaTile({ item, palette }) {
+function LazyMediaTile({ item, palette, index, onOpen }) {
   const [src, setSrc] = useState(() => {
     const u = item.uri;
     return u && (u.startsWith("blob:") || u.startsWith("http")) ? u : null;
@@ -25,15 +26,16 @@ function LazyMediaTile({ item, palette }) {
 
   const bg = src ? `url("${src}")` : `url("${placeholderSrc(item.uri, 400, 400, palette)}")`;
   return (
-    <div className="ms-media-tile" style={{ backgroundImage: bg }}>
+    <div className="ms-media-tile" style={{ backgroundImage: bg }} onClick={() => onOpen?.(index)}>
       {item.isVideo && (
         <>
-          {src && (
-            <video src={src} preload="metadata" muted playsInline
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-              onLoadedMetadata={(e) => { try { e.target.currentTime = 0.001; } catch {} }}
-            />
-          )}
+          <video
+            src={src || undefined}
+            preload={src ? "metadata" : "none"}
+            muted playsInline
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            onLoadedMetadata={(e) => { try { e.target.currentTime = 0.001; } catch {} }}
+          />
           <span className="ms-media-tile-vid" aria-hidden="true">
             <svg viewBox="0 0 10 10" width="10" height="10"><path d="M2.5 1.5 L8.5 5 L2.5 8.5 Z" fill="currentColor"/></svg>
           </span>
@@ -49,14 +51,15 @@ const WINDOWS = [
   { label: "All time", ms: 0 },
 ];
 
-export default function InsightsPanel({ thread, palette, onClose, open, profile }) {
+export default function InsightsPanel({ thread, palette, onClose, open, profile, onJumpToMessage }) {
   const [winIdx, setWinIdx]       = useState(1);
   const [stats, setStats]         = useState(null);
   const [busy,  setBusy]          = useState(false);
   const [photoState, setPhotoState] = useState(null);
   const [mediaPage, setMediaPage] = useState(0);
+  const [viewerIdx, setViewerIdx] = useState(-1);
 
-  useEffect(() => { setMediaPage(0); }, [thread.id, winIdx]);
+  useEffect(() => { setMediaPage(0); setViewerIdx(-1); }, [thread.id, winIdx]);
 
   useEffect(() => {
     setBusy(true);
@@ -74,11 +77,12 @@ export default function InsightsPanel({ thread, palette, onClose, open, profile 
     const out = [];
     thread.messages.forEach((m) => {
       if (since && m.timestamp_ms < since) return;
-      if (m.photos) m.photos.forEach((p) => out.push({ ...p, isVideo: false, ts: m.timestamp_ms }));
-      if (m.videos) m.videos.forEach((v) => out.push({ ...v, isVideo: true,  ts: m.timestamp_ms }));
+      const senderName = m.sender_name === "You" ? (profile?.displayName || "You") : m.sender_name;
+      if (m.photos) m.photos.forEach((p) => out.push({ ...p, isVideo: false, ts: m.timestamp_ms, msgId: m.id, senderName }));
+      if (m.videos) m.videos.forEach((v) => out.push({ ...v, isVideo: true,  ts: m.timestamp_ms, msgId: m.id, senderName }));
     });
     return out;
-  }, [thread.id, thread.messages.length, winIdx]);
+  }, [thread.id, thread.messages.length, winIdx, profile]);
 
   // "On This Day" — messages from today's month+day in past years
   const onThisDay = useMemo(() => {
@@ -258,7 +262,13 @@ export default function InsightsPanel({ thread, palette, onClose, open, profile 
                   <h4>Media · {media.length}</h4>
                   <div className="ms-media-grid">
                     {pageItems.map((item, i) => (
-                      <LazyMediaTile key={`${mediaPage}-${i}`} item={item} palette={palette} />
+                      <LazyMediaTile
+                        key={`${mediaPage}-${i}`}
+                        item={item}
+                        palette={palette}
+                        index={mediaPage * PAGE_SIZE + i}
+                        onOpen={setViewerIdx}
+                      />
                     ))}
                   </div>
                   {totalPages > 1 && (
@@ -285,6 +295,20 @@ export default function InsightsPanel({ thread, palette, onClose, open, profile 
           ) : null}
         </div>
       </aside>
+
+      {viewerIdx >= 0 && media[viewerIdx] && (
+        <MediaViewer
+          items={media}
+          index={viewerIdx}
+          palette={palette}
+          onClose={() => setViewerIdx(-1)}
+          onIndex={setViewerIdx}
+          onJumpToMessage={(mid) => {
+            setViewerIdx(-1);
+            onJumpToMessage?.(mid);
+          }}
+        />
+      )}
     </>
   );
 }
