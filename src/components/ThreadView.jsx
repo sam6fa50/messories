@@ -164,21 +164,16 @@ export default function ThreadView({ thread, palette, density, onToggleInsights,
             <div className="ms-thread-archive-mark" style={{ position: "absolute", top: 0, left: 0, right: 0 }}>
               archived · read-only · loaded {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </div>
-            <div
-              className="ms-msglist"
-              data-density={density}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                transform: `translateY(${virtualItems[0]?.start ?? 0}px)`,
-              }}
-            >
-              {virtualItems.map((vRow) => {
-                const item = grouped[vRow.index];
-                return (
-                  <div key={vRow.key} data-index={vRow.index} ref={virtualizer.measureElement}>
+            {virtualItems.map((vRow) => {
+              const item = grouped[vRow.index];
+              return (
+                <div
+                  key={vRow.key}
+                  data-index={vRow.index}
+                  ref={virtualizer.measureElement}
+                  style={{ position: "absolute", top: 0, left: 0, right: 0, transform: `translateY(${vRow.start}px)` }}
+                >
+                  <div className="ms-msglist">
                     {item.kind === "date" ? (
                       <div className="ms-date-sep"><span>{item.label}</span></div>
                     ) : (
@@ -197,9 +192,9 @@ export default function ThreadView({ thread, palette, density, onToggleInsights,
                       />
                     )}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
