@@ -185,24 +185,24 @@ export default function VoiceMessage({ audio, mine }) {
       <div className="ms-voice-time" title={`${elapsed} elapsed`}>
         {errored ? "—" : (progress > 0 && progress < 1 ? elapsed : remaining)}
       </div>
-      {isBlobUrl && !errored && (
-        <button
-          className="ms-voice-dl"
-          onClick={(e) => {
-            e.stopPropagation();
-            const a = document.createElement("a");
-            a.href = resolvedUri;
-            a.download = `voice-${strHash(audio.uri)}.m4a`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-          }}
-          title="Download voice memo"
-          aria-label="Download voice memo"
-        >
-          <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
-            <path d="M8 2 V10 M4.5 7.5 L8 11 L11.5 7.5 M3 14 H13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-      )}
+      <button
+        className="ms-voice-dl"
+        onClick={(e) => {
+          if (!isBlobUrl || errored) return;
+          e.stopPropagation();
+          const a = document.createElement("a");
+          a.href = resolvedUri;
+          a.download = `voice-${strHash(audio.uri)}.m4a`;
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }}
+        title="Download voice memo"
+        aria-label="Download voice memo"
+        tabIndex={isBlobUrl && !errored ? 0 : -1}
+      >
+        <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
+          <path d="M8 2 V10 M4.5 7.5 L8 11 L11.5 7.5 M3 14 H13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
     </div>
   );
 }

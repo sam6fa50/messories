@@ -8,19 +8,28 @@ import { fmtYearRange } from "../utils/format.js";
 
 const SENDER_PALETTE = ["#b8836b", "#a64b2a", "#5c6b5a", "#6b7a99", "#3a2a1f", "#8c6a4a"];
 
+// CSS defaults: 16px Newsreader serif, 9px pad-y, 1.45 line-height → ~23px/line
+const _LH = 24, _PAD = 20, _CPL = 52;
 function estimateSize(item) {
   if (item.kind === "date") return 50;
   const m = item.msg;
-  if (m.is_call) return 66;
-  let h = item.firstInRun ? 50 : 34;
+  if (m.is_call) return 70;
+  // firstInRun: margin-top(10) + name-row(20). stack: margin-top(2) + row-gap(2)
+  let h = item.firstInRun ? 30 : 4;
+  // Text bubble — account for wrap based on content length
+  const txt = m.content && m.content !== m.share?.link ? m.content : null;
+  if (txt) h += Math.max(1, Math.ceil(txt.length / _CPL)) * _LH + _PAD;
+  // Media
   if (m.photos || m.videos) {
     const n = (m.photos?.length || 0) + (m.videos?.length || 0);
-    h += n === 1 ? 300 : n === 2 ? 188 : 372;
+    h += n === 1 ? 298 : n === 2 ? 192 : 372;
   }
-  if (m.audio_files) h += 64;
-  if (m.share) h += 72;
-  if (m.reactions?.length) h += 30;
-  if (m.reply_to) h += 44;
+  if (m.audio_files) h += 50;
+  if (m.share) h += 80;
+  if (m.reply_to) h += 38;
+  if (m.reactions?.length) h += 28;
+  // Stack-time footer rendered when endsBlock is true
+  if (item.endsBlock) h += 36;
   return h;
 }
 
@@ -115,9 +124,10 @@ export default function ThreadView({ thread, palette, density, onToggleInsights,
 
   useEffect(() => {
     if (!pendingJump || pendingJump.threadId !== thread.id) return;
+    if (messagesLoading) return; // messages not yet loaded; effect re-fires when they are
     const id = setTimeout(() => { scrollToMsg(pendingJump.msgId); onJumpHandled?.(); }, 80);
     return () => clearTimeout(id);
-  }, [pendingJump, thread.id, scrollToMsg, onJumpHandled]);
+  }, [pendingJump, thread.id, scrollToMsg, onJumpHandled, messagesLoading]);
 
   const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || "");
   const virtualItems = virtualizer.getVirtualItems();

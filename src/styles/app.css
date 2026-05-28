@@ -724,3 +724,149 @@ a.ms-share-link:hover .ms-share-ext { opacity: 1; color: var(--p-accent); transf
 .ms-restore-meta { font-family: var(--ms-mono); font-size: 10px; color: var(--p-ink-muted); letter-spacing: 0.04em; }
 .ms-restore-actions { display: flex; gap: 7px; flex-shrink: 0; align-items: center; }
 .ms-restore-clear { padding: 5px 10px !important; font-size: 16px !important; line-height: 1; }
+
+/* ── RAIL SETTINGS BUTTON ── */
+.ms-rail-head-actions { display: flex; align-items: center; gap: 6px; }
+.ms-rail-head-btn {
+  appearance: none; border: 0.5px solid var(--p-line); background: transparent;
+  width: 28px; height: 28px; border-radius: 7px; display: inline-flex;
+  align-items: center; justify-content: center; color: var(--p-ink-muted);
+  cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+  flex-shrink: 0;
+}
+.ms-rail-head-btn:hover { background: var(--p-panel); color: var(--p-ink); border-color: var(--p-accent); }
+
+/* ── SETTINGS PANEL ── */
+.ms-sp-scrim {
+  position: absolute; inset: 0; background: rgba(0,0,0,0); z-index: 20;
+  pointer-events: none; transition: background .28s;
+}
+.ms-app.ms-settings-open .ms-sp-scrim { background: rgba(0,0,0,0.08); pointer-events: auto; }
+.ms-sp {
+  position: absolute; top: 0; left: 0; bottom: 0;
+  width: clamp(260px, 26vw, 340px);
+  border-right: 0.5px solid var(--p-line); background: var(--p-bg);
+  display: flex; flex-direction: column; overflow-y: auto; z-index: 21;
+  transform: translateX(-100%);
+  transition: transform .28s cubic-bezier(.4,0,.2,1), box-shadow .28s;
+  box-shadow: 0 0 0 rgba(0,0,0,0);
+}
+.ms-app.ms-settings-open .ms-sp {
+  transform: translateX(0);
+  box-shadow: 16px 0 40px -16px rgba(0,0,0,0.14);
+}
+.ms-sp::-webkit-scrollbar { width: 10px; }
+.ms-sp::-webkit-scrollbar-thumb { background: var(--p-line); border-radius: 10px; border: 3px solid var(--p-bg); background-clip: content-box; }
+.ms-sp-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18px 20px 12px; border-bottom: 0.5px solid var(--p-line);
+  position: sticky; top: 0; background: var(--p-bg); z-index: 1;
+}
+.ms-sp-head h3 { margin: 0; font-family: var(--ms-serif); font-weight: 500; font-size: 18px; font-style: italic; letter-spacing: -0.01em; color: var(--p-ink); }
+.ms-sp-x { appearance: none; border: 0; background: transparent; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; color: var(--p-ink-muted); font-size: 18px; display: inline-flex; align-items: center; justify-content: center; }
+.ms-sp-x:hover { background: var(--p-panel); color: var(--p-ink); }
+.ms-sp-body { padding: 16px 20px 40px; display: flex; flex-direction: column; gap: 24px; }
+.ms-sp-sec { display: flex; flex-direction: column; gap: 12px; }
+.ms-sp-sec-title { margin: 0; font-family: var(--ms-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--p-ink-muted); font-weight: 500; }
+.ms-sp-row { display: flex; flex-direction: column; gap: 6px; }
+.ms-sp-row-label { font-family: var(--ms-mono); font-size: 11px; color: var(--p-ink-muted); letter-spacing: 0.04em; }
+.ms-sp-row-ctrl { display: flex; }
+.ms-sp-slider { width: 100%; accent-color: var(--p-accent); cursor: pointer; }
+.ms-sp-chips { display: flex; gap: 4px; }
+.ms-sp-chip {
+  flex: 1; appearance: none; padding: 6px 0; border-radius: 6px;
+  border: 0.5px solid var(--p-line); background: transparent;
+  color: var(--p-ink-muted); font-family: var(--ms-mono); font-size: 11px;
+  letter-spacing: 0.03em; cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.ms-sp-chip:hover { border-color: var(--p-accent); color: var(--p-ink); }
+.ms-sp-chip-on { background: var(--p-accent); color: var(--p-bg); border-color: var(--p-accent) !important; }
+.ms-sp-input {
+  flex: 1; appearance: none; border: 0.5px solid var(--p-line); background: var(--p-panel);
+  padding: 7px 10px; border-radius: 6px; font-size: 13px; color: var(--p-ink);
+  font-family: var(--ms-serif); outline: none; transition: border-color .15s;
+}
+.ms-sp-input:focus { border-color: var(--p-accent); }
+.ms-sp-handle { font-family: var(--ms-mono); font-size: 10px; color: var(--p-ink-muted); letter-spacing: 0.04em; }
+
+/* ── SETTINGS PALETTE SWATCHES ── */
+.ms-sp-palettes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ms-sp-palette {
+  appearance: none; border: 1.5px solid var(--p-line); background: transparent;
+  border-radius: 8px; cursor: pointer; padding: 8px 6px 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  transition: border-color .12s, box-shadow .12s;
+  overflow: hidden; position: relative;
+}
+.ms-sp-palette:hover { border-color: var(--p-accent); }
+.ms-sp-palette-on { border-color: var(--p-accent) !important; box-shadow: 0 0 0 1px var(--p-accent); }
+.ms-sp-palette-bg { display: block; width: 100%; height: 20px; border-radius: 4px 4px 0 0; position: absolute; top: 0; left: 0; right: 0; }
+.ms-sp-palette-bubble { display: block; width: 18px; height: 10px; border-radius: 4px; margin-top: 26px; align-self: flex-start; }
+.ms-sp-palette-accent { display: block; width: 18px; height: 10px; border-radius: 4px; align-self: flex-end; }
+.ms-sp-palette-name { font-family: var(--ms-mono); font-size: 8.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--p-ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* ── CHAT BACKGROUND OPTIONS ── */
+.ms-sp-bg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ms-sp-bg-opt {
+  appearance: none; border: 1.5px solid var(--p-line); background: transparent;
+  border-radius: 8px; cursor: pointer; padding: 0 0 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  overflow: hidden; transition: border-color .12s;
+}
+.ms-sp-bg-opt:hover { border-color: var(--p-accent); }
+.ms-sp-bg-opt-on { border-color: var(--p-accent) !important; box-shadow: 0 0 0 1px var(--p-accent); }
+.ms-sp-bg-opt span { font-family: var(--ms-mono); font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--p-ink-muted); }
+.ms-sp-bg-preview {
+  width: 100%; height: 40px; background-color: var(--p-bg);
+}
+.ms-sp-bg-preview[data-bg="dots"] {
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--p-ink) 14%, transparent) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+.ms-sp-bg-preview[data-bg="grid"] {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--p-line) 80%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--p-line) 80%, transparent) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+.ms-sp-bg-preview[data-bg="lines"] {
+  background-image: repeating-linear-gradient(
+    to bottom, transparent, transparent 7px,
+    color-mix(in srgb, var(--p-line) 80%, transparent) 7px,
+    color-mix(in srgb, var(--p-line) 80%, transparent) 8px
+  );
+}
+.ms-sp-bg-preview[data-bg="diagonal"] {
+  background-image: repeating-linear-gradient(
+    -45deg, transparent, transparent 5px,
+    color-mix(in srgb, var(--p-line) 70%, transparent) 5px,
+    color-mix(in srgb, var(--p-line) 70%, transparent) 6px
+  );
+}
+
+/* ── CHAT BACKGROUND APPLIED ── */
+[data-chatbg="dots"] .ms-thread-scroll {
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--p-ink) 8%, transparent) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+[data-chatbg="grid"] .ms-thread-scroll {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--p-line) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--p-line) 55%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+[data-chatbg="lines"] .ms-thread-scroll {
+  background-image: repeating-linear-gradient(
+    to bottom, transparent, transparent 23px,
+    color-mix(in srgb, var(--p-line) 55%, transparent) 23px,
+    color-mix(in srgb, var(--p-line) 55%, transparent) 24px
+  );
+}
+[data-chatbg="diagonal"] .ms-thread-scroll {
+  background-image: repeating-linear-gradient(
+    -45deg, transparent, transparent 18px,
+    color-mix(in srgb, var(--p-line) 40%, transparent) 18px,
+    color-mix(in srgb, var(--p-line) 40%, transparent) 19px
+  );
+}

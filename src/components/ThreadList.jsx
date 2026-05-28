@@ -2,7 +2,7 @@ import { useState } from "react";
 import Avatar from "./Avatar.jsx";
 import { fmtRelative, fmtYearRange, fmtCallDuration } from "../utils/format.js";
 
-export default function ThreadList({ threads, activeId, onSelect, onBackToImport, onOpenSearch }) {
+export default function ThreadList({ threads, activeId, onSelect, onBackToImport, onOpenSearch, onOpenSettings }) {
   const [query, setQuery] = useState("");
 
   const filtered = threads.filter((t) => {
@@ -21,11 +21,21 @@ export default function ThreadList({ threads, activeId, onSelect, onBackToImport
           <span className="ms-brand-mark">M</span>
           <span className="ms-brand-word">essories</span>
         </div>
-        <div className="ms-privacy-chip" title="All data stays on this device.">
-          <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true">
-            <path d="M6 1.2 C7.7 1.2 9 2.5 9 4.2 V5.4 H9.4 A.6.6 0 0 1 10 6 V10 A.6.6 0 0 1 9.4 10.6 H2.6 A.6.6 0 0 1 2 10 V6 A.6.6 0 0 1 2.6 5.4 H3 V4.2 C3 2.5 4.3 1.2 6 1.2 Z M6 2.4 C5 2.4 4.2 3.2 4.2 4.2 V5.4 H7.8 V4.2 C7.8 3.2 7 2.4 6 2.4 Z" fill="currentColor"/>
-          </svg>
-          <span>local</span>
+        <div className="ms-rail-head-actions">
+          <button className="ms-rail-head-btn" onClick={onOpenSettings} aria-label="Settings" title="Settings">
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <line x1="2" y1="5" x2="14" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <line x1="2" y1="11" x2="14" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="5.5" cy="5" r="2" fill="var(--p-bg)" stroke="currentColor" strokeWidth="1.5"/>
+              <circle cx="10.5" cy="11" r="2" fill="var(--p-bg)" stroke="currentColor" strokeWidth="1.5"/>
+            </svg>
+          </button>
+          <div className="ms-privacy-chip" title="All data stays on this device.">
+            <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M6 1.2 C7.7 1.2 9 2.5 9 4.2 V5.4 H9.4 A.6.6 0 0 1 10 6 V10 A.6.6 0 0 1 9.4 10.6 H2.6 A.6.6 0 0 1 2 10 V6 A.6.6 0 0 1 2.6 5.4 H3 V4.2 C3 2.5 4.3 1.2 6 1.2 Z M6 2.4 C5 2.4 4.2 3.2 4.2 4.2 V5.4 H7.8 V4.2 C7.8 3.2 7 2.4 6 2.4 Z" fill="currentColor"/>
+            </svg>
+            <span>local</span>
+          </div>
         </div>
       </div>
 

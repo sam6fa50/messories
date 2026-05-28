@@ -4,6 +4,7 @@ import ThreadList from "./components/ThreadList.jsx";
 import ThreadView from "./components/ThreadView.jsx";
 import InsightsPanel from "./components/InsightsPanel.jsx";
 import SearchOverlay from "./components/SearchOverlay.jsx";
+import SettingsPanel from "./components/SettingsPanel.jsx";
 import { SAMPLE_THREADS, SAMPLE_PROFILE } from "./data/sampleData.js";
 import { getCachedMessages } from "./utils/db.js";
 
@@ -19,7 +20,7 @@ const PALETTES = {
   aurora:      { name: "Aurora",        bg: "#07101c", panel: "#0c1824", ink: "#c8e4e0", inkMuted: "#4a8078", accent: "#38c4a0", soft: "#163c38", bubbleTheirs: "#0f1e28", bubbleMine: "#38c4a0", bubbleMineInk: "#07101c", line: "#16303a", placeholderBg: "#0e2030", placeholderFg: "#38c4a0" },
 };
 
-const DEFAULTS = { palette: "sepia", density: "regular", fontSize: 16, bubbleMax: 480, bubbleShape: "soft", typeVoice: "journal", msgFont: "sans" };
+const DEFAULTS = { palette: "sepia", density: "regular", fontSize: 16, bubbleMax: 480, bubbleShape: "soft", typeVoice: "journal", msgFont: "serif", chatBg: "none", displayName: "" };
 
 export default function App() {
   const [screen, setScreen] = useState("landing");
@@ -32,10 +33,29 @@ export default function App() {
   const [mobileShowList, setMobileShowList] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [pendingJump, setPendingJump] = useState(null);
-  const [tweaks, setTweaks] = useState(DEFAULTS);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tweaks, setTweaks] = useState(() => {
+    try {
+      const saved = localStorage.getItem("ms-tweaks");
+      if (saved) return { ...DEFAULTS, ...JSON.parse(saved) };
+    } catch {}
+    return DEFAULTS;
+  });
   const msgCache = useRef(new Map()); // threadId → messages[], cleared on archive change
 
   const palette = PALETTES[tweaks.palette] || PALETTES.sepia;
+
+  // Persist tweaks
+  useEffect(() => {
+    try { localStorage.setItem("ms-tweaks", JSON.stringify(tweaks)); } catch {}
+  }, [tweaks]);
+
+  // Resolved profile with display name override
+  const resolvedProfile = useMemo(() => {
+    if (!profile) return profile;
+    const name = tweaks.displayName?.trim() || profile.displayName;
+    return { ...profile, displayName: name };
+  }, [profile, tweaks.displayName]);
 
   // Apply CSS vars
   useEffect(() => {
@@ -50,6 +70,7 @@ export default function App() {
     r.dataset.bubbleShape = tweaks.bubbleShape;
     r.dataset.typeVoice = tweaks.typeVoice;
     r.dataset.msgFont = tweaks.msgFont;
+    r.dataset.chatbg = tweaks.chatBg;
   }, [palette, tweaks]);
 
   const [vw, setVw] = useState(window.innerWidth);
@@ -144,7 +165,7 @@ export default function App() {
 
   return (
     <div
-      className={`ms-app ${narrow ? "ms-narrow" : ""} ${insightsOpen ? "ms-insights-open" : ""}`}
+      className={`ms-app ${narrow ? "ms-narrow" : ""} ${insightsOpen ? "ms-insights-open" : ""} ${settingsOpen ? "ms-settings-open" : ""}`}
       data-density={tweaks.density}
     >
       {showList && (
@@ -154,6 +175,7 @@ export default function App() {
           onSelect={(id) => { setActiveId(id); if (narrow) setMobileShowList(false); }}
           onBackToImport={() => setScreen("landing")}
           onOpenSearch={() => setSearchOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
       )}
 
@@ -166,7 +188,7 @@ export default function App() {
           onToggleInsights={() => setInsightsOpen((v) => !v)}
           onBack={() => setMobileShowList(true)}
           narrow={narrow}
-          profile={profile}
+          profile={resolvedProfile}
           pendingJump={pendingJump}
           onJumpHandled={() => setPendingJump(null)}
           onOpenSearch={() => setSearchOpen(true)}
@@ -180,7 +202,7 @@ export default function App() {
           palette={palette}
           onClose={() => setInsightsOpen(false)}
           open={insightsOpen}
-          profile={profile}
+          profile={resolvedProfile}
           onJumpToMessage={(mid) => {
             setInsightsOpen(false);
             setPendingJump({ threadId: activeThread.id, msgId: mid, ts: Date.now() });
@@ -195,123 +217,20 @@ export default function App() {
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         onJump={handleJumpToMessage}
-        profile={profile}
+        profile={resolvedProfile}
         activeThreadId={activeThread?.id}
         activeThreadTitle={activeThread?.title}
       />
 
-      {/* Tweaks panel — floating, palette + density controls */}
-      <TweaksPanel tweaks={tweaks} onChange={setTweaks} palettes={PALETTES} />
+      <SettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        tweaks={tweaks}
+        onChange={setTweaks}
+        palettes={PALETTES}
+        profile={resolvedProfile}
+      />
     </div>
   );
 }
 
-function TweaksPanel({ tweaks, onChange, palettes }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        style={{
-          position: "fixed", bottom: 16, right: 16, zIndex: 999,
-          width: 36, height: 36, borderRadius: "50%",
-          border: "0.5px solid var(--p-line)", background: "var(--p-bg)",
-          color: "var(--p-ink-muted)", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-          transition: "background .15s",
-        }}
-        aria-label="Toggle tweaks"
-        title="Tweaks"
-      >
-        <svg viewBox="0 0 16 16" width="15" height="15">
-          <circle cx="8" cy="8" r="2.5" fill="none" stroke="currentColor" strokeWidth="1.4"/>
-          <path d="M8 1.5 V3.5 M8 12.5 V14.5 M1.5 8 H3.5 M12.5 8 H14.5 M3.6 3.6 L5 5 M11 11 L12.4 12.4 M12.4 3.6 L11 5 M5 11 L3.6 12.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-        </svg>
-      </button>
-
-      {open && (
-        <div style={{
-          position: "fixed", bottom: 60, right: 16, zIndex: 1000,
-          width: 260, padding: "14px 16px",
-          background: "var(--p-bg)", border: "0.5px solid var(--p-line)",
-          borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.14)",
-          display: "flex", flexDirection: "column", gap: 12,
-          fontFamily: "var(--ms-mono)", fontSize: 11, color: "var(--p-ink)",
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", fontSize: 10, color: "var(--p-ink-muted)" }}>Tweaks</span>
-            <button onClick={() => setOpen(false)} style={{ appearance: "none", border: 0, background: "transparent", color: "var(--p-ink-muted)", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
-          </div>
-
-          <div>
-            <div style={{ fontSize: 10, color: "var(--p-ink-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Theme</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-              {Object.entries(palettes).map(([key, p]) => (
-                <button key={key} onClick={() => onChange((t) => ({ ...t, palette: key }))} title={p.name}
-                  style={{ width: 34, height: 24, borderRadius: 5, border: tweaks.palette === key ? `2px solid ${p.accent}` : `1px solid ${p.line}`, background: p.bg, cursor: "pointer", position: "relative", overflow: "hidden", flexShrink: 0 }}>
-                  <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "38%", background: p.accent }} />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: 10, color: "var(--p-ink-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Density</div>
-            <div style={{ display: "flex", gap: 4 }}>
-              {["compact", "regular", "cozy"].map((d) => (
-                <button key={d} onClick={() => onChange((t) => ({ ...t, density: d }))}
-                  style={{ flex: 1, padding: "5px 0", borderRadius: 6, border: `0.5px solid ${tweaks.density === d ? "var(--p-accent)" : "var(--p-line)"}`, background: tweaks.density === d ? "var(--p-accent)" : "transparent", color: tweaks.density === d ? "var(--p-bg)" : "var(--p-ink)", cursor: "pointer", fontSize: 11, fontFamily: "var(--ms-mono)" }}>
-                  {d}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-              <span style={{ fontSize: 10, color: "var(--p-ink-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Font size</span>
-              <span style={{ color: "var(--p-ink-muted)" }}>{tweaks.fontSize}px</span>
-            </div>
-            <input type="range" min={13} max={18} value={tweaks.fontSize} onChange={(e) => onChange((t) => ({ ...t, fontSize: +e.target.value }))}
-              style={{ width: "100%", accentColor: "var(--p-accent)" }} />
-          </div>
-
-          <div>
-            <div style={{ fontSize: 10, color: "var(--p-ink-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Bubble shape</div>
-            <div style={{ display: "flex", gap: 4 }}>
-              {["soft", "paper", "sharp"].map((s) => (
-                <button key={s} onClick={() => onChange((t) => ({ ...t, bubbleShape: s }))}
-                  style={{ flex: 1, padding: "5px 0", borderRadius: 6, border: `0.5px solid ${tweaks.bubbleShape === s ? "var(--p-accent)" : "var(--p-line)"}`, background: tweaks.bubbleShape === s ? "var(--p-accent)" : "transparent", color: tweaks.bubbleShape === s ? "var(--p-bg)" : "var(--p-ink)", cursor: "pointer", fontSize: 11, fontFamily: "var(--ms-mono)" }}>
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: 10, color: "var(--p-ink-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Message font</div>
-            <div style={{ display: "flex", gap: 4 }}>
-              {[["sans", "Sans"], ["serif", "Serif"], ["mono", "Mono"]].map(([v, label]) => (
-                <button key={v} onClick={() => onChange((t) => ({ ...t, msgFont: v }))}
-                  style={{ flex: 1, padding: "5px 0", borderRadius: 6, border: `0.5px solid ${tweaks.msgFont === v ? "var(--p-accent)" : "var(--p-line)"}`, background: tweaks.msgFont === v ? "var(--p-accent)" : "transparent", color: tweaks.msgFont === v ? "var(--p-bg)" : "var(--p-ink)", cursor: "pointer", fontSize: 11, fontFamily: "var(--ms-mono)" }}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-              <span style={{ fontSize: 10, color: "var(--p-ink-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Bubble width</span>
-              <span style={{ color: "var(--p-ink-muted)" }}>{tweaks.bubbleMax}px</span>
-            </div>
-            <input type="range" min={320} max={640} step={20} value={tweaks.bubbleMax} onChange={(e) => onChange((t) => ({ ...t, bubbleMax: +e.target.value }))}
-              style={{ width: "100%", accentColor: "var(--p-accent)" }} />
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
