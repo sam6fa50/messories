@@ -6,19 +6,24 @@ import MediaBlock from "./MediaBlock.jsx";
 import CallCard from "./CallCard.jsx";
 
 function SharedPost({ share, palette }) {
-  const handle = share.original_content_owner || "unknown";
-  const href = share.link || `https://instagram.com/p/${encodeURIComponent(handle)}`;
+  const href = share.link || "#";
+  let displayHandle = null;
+  if (share.original_content_owner) {
+    displayHandle = "@" + share.original_content_owner;
+  } else if (share.link) {
+    try { displayHandle = new URL(share.link).hostname; } catch {}
+  }
   return (
-    <a className="ms-share ms-share-link" href={href} target="_blank" rel="noopener noreferrer" title={`Open on Instagram ↗`} onClick={(e) => e.stopPropagation()}>
+    <a className="ms-share ms-share-link" href={href} target="_blank" rel="noopener noreferrer" title="Open on Instagram ↗" onClick={(e) => e.stopPropagation()}>
       <div className="ms-share-head">
         <div className="ms-share-dot" />
-        <span className="ms-share-handle">@{handle}</span>
+        {displayHandle && <span className="ms-share-handle">{displayHandle}</span>}
         <span className="ms-share-kind">shared post</span>
         <span className="ms-share-ext" aria-hidden="true">
           <svg width="11" height="11" viewBox="0 0 12 12"><path d="M5 2 H10 V7 M10 2 L5.5 6.5 M9 6.5 V10 H2 V3 H5.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </span>
       </div>
-      <div className="ms-share-img" style={{ backgroundImage: `url("${placeholderSrc("share:" + handle, 800, 800, palette)}")` }} />
+      <div className="ms-share-img" style={{ backgroundImage: `url("${placeholderSrc("share:" + (share.original_content_owner || displayHandle || "post"), 800, 800, palette)}")` }} />
       {share.post_caption && <div className="ms-share-caption">"{share.post_caption}"</div>}
     </a>
   );
@@ -51,7 +56,7 @@ const MessageRow = memo(function MessageRow({ msg, firstInRun, lastInRun, endsBl
     );
   }
 
-  const hasText = !!msg.content;
+  const hasText = !!msg.content && msg.content !== msg.share?.link;
   const hasMedia = (msg.photos && msg.photos.length) || (msg.videos && msg.videos.length);
   const hasVoice = msg.audio_files && msg.audio_files.length;
   const hasShare = msg.share;
@@ -99,7 +104,6 @@ const MessageRow = memo(function MessageRow({ msg, firstInRun, lastInRun, endsBl
             <div className={`ms-bubble-wrap ${mine ? "ms-mine" : ""}`} data-time={ts}>
               <div className={bubbleCls("media")}>
                 <SharedPost share={msg.share} palette={palette} />
-                {msg.share.caption && <div className="ms-share-cap-line">{msg.share.caption}</div>}
               </div>
               <ReactionsRow reactions={reactions} mine={mine} />
             </div>

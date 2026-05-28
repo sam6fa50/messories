@@ -11,6 +11,15 @@ export function clearZip() {
   _cache.clear();
 }
 
+export async function warmupZip(file) {
+  if (_zip) return;
+  try {
+    const { default: JSZip } = await import("jszip");
+    const zip = await JSZip.loadAsync(file);
+    if (!_zip) setZip(zip);
+  } catch {}
+}
+
 export async function resolveUri(uri) {
   if (!uri) return null;
   if (uri.startsWith("blob:") || uri.startsWith("http://") || uri.startsWith("https://")) return uri;

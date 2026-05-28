@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Landing from "./components/Landing.jsx";
 import ThreadList from "./components/ThreadList.jsx";
 import ThreadView from "./components/ThreadView.jsx";
@@ -33,6 +33,7 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [pendingJump, setPendingJump] = useState(null);
   const [tweaks, setTweaks] = useState(DEFAULTS);
+  const msgCache = useRef(new Map()); // threadId → messages[], cleared on archive change
 
   const palette = PALETTES[tweaks.palette] || PALETTES.sepia;
 
@@ -94,17 +95,28 @@ export default function App() {
     setScreen("app");
   }, []);
 
+  // Clear message cache when the loaded archive changes
+  useEffect(() => { msgCache.current.clear(); }, [archKey]);
+
   // Load messages for the active thread on demand
   useEffect(() => {
     if (!activeId) return;
     if (!archKey) {
-      // Sample data: messages live on the thread object
       const t = threads.find((t) => t.id === activeId);
       setActiveMessages(t?.messages ?? []);
       return;
     }
-    setActiveMessages(null); // triggers loading state in ThreadView
-    getCachedMessages(archKey, activeId).then((msgs) => setActiveMessages(msgs || []));
+    // Serve from in-memory cache — no IDB round-trip, no loading flash
+    if (msgCache.current.has(activeId)) {
+      setActiveMessages(msgCache.current.get(activeId));
+      return;
+    }
+    setActiveMessages(null); // first visit: show loading spinner while IDB loads
+    getCachedMessages(archKey, activeId).then((msgs) => {
+      const result = msgs || [];
+      msgCache.current.set(activeId, result);
+      setActiveMessages(result);
+    });
   }, [activeId, archKey, threads]);
 
   const activeThreadStub = threads.find((t) => t.id === activeId) || threads[0];

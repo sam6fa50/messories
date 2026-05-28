@@ -79,7 +79,13 @@ export async function parseInstagramZip(file, onProgress) {
     if (raw.photos?.length) msg.photos = raw.photos.map((p) => ({ uri: p.uri, width: 1080, height: 1080 }));
     if (raw.videos?.length) msg.videos = raw.videos.map((v) => ({ uri: v.uri, duration_s: v.duration_ms ? v.duration_ms / 1000 : 0, width: 1080, height: 1920 }));
     if (raw.audio_files?.length) msg.audio_files = raw.audio_files.map((a) => ({ uri: a.uri, duration_s: a.duration_ms ? a.duration_ms / 1000 : 30 }));
-    if (raw.share) msg.share = { caption: raw.share.share_text || null, original_content_owner: raw.share.original_content_owner || raw.share.link || "unknown", post_caption: raw.share.share_text || null, link: raw.share.link || null, kind: "post" };
+    if (raw.share) {
+      const link = raw.share.link || null;
+      const owner = raw.share.original_content_owner || null;
+      const shareText = raw.share.share_text || null;
+      const caption = (shareText && shareText !== link) ? shareText : null;
+      msg.share = { caption, original_content_owner: owner, post_caption: caption, link, kind: "post" };
+    }
     if (raw.replied_to_message) msg.reply_to = { sender: raw.replied_to_message.sender_name || null, snippet: raw.replied_to_message.content || "(media)" };
     return [msg];
   }
@@ -109,15 +115,53 @@ export async function parseInstagramZip(file, onProgress) {
 
   let profileName = "You";
   let profileHandle = "you";
-  const piFile = zip.file("personal_information/personal_information.json") || zip.file("account_information/personal_information.json");
-  if (piFile) {
+
+  // Try every known path Instagram has used across export versions
+  const piCandidates = [
+    "personal_information/personal_information.json",
+    "account_information/personal_information.json",
+    "your_instagram_activity/personal_information/personal_information.json",
+    "logged_information/personal_information.json",
+    "personal_information.json",
+  ];
+  for (const path of piCandidates) {
+    const piFile = zip.file(path);
+    if (!piFile) continue;
     try {
       const raw = fixObj(JSON.parse(await piFile.async("string")));
-      const info = raw?.profile_user?.[0]?.string_map_data?.Name?.value || raw?.profile_v2?.profile_user?.[0]?.string_map_data?.Name?.value || raw?.name || null;
-      const handle = raw?.profile_user?.[0]?.string_map_data?.Username?.value || raw?.profile_v2?.profile_user?.[0]?.string_map_data?.Username?.value || null;
-      if (info) profileName = info;
-      if (handle) profileHandle = handle;
+      const info = raw?.profile_user?.[0]?.string_map_data?.Name?.value
+        || raw?.profile_v2?.profile_user?.[0]?.string_map_data?.Name?.value
+        || raw?.name || null;
+      const handle = raw?.profile_user?.[0]?.string_map_data?.Username?.value
+        || raw?.profile_v2?.profile_user?.[0]?.string_map_data?.Username?.value
+        || raw?.username || null;
+      if (handle && profileHandle === "you") profileHandle = handle;
+      if (info) { profileName = info; break; }
     } catch {}
+  }
+
+  // Heuristic fallback: the user is the participant present in the most threads.
+  // Read up to 50 thread metadata files in parallel — cheap since they're tiny JSONs.
+  if (profileName === "You") {
+    const counts = new Map();
+    await Promise.all(
+      folderNames.slice(0, Math.min(50, folderNames.length)).map(async (folder) => {
+        const paths = threadFolders[folder];
+        if (!paths.length) return;
+        try {
+          const d = fixObj(JSON.parse(await zip.file(paths[0]).async("string")));
+          (d.participants || []).forEach((p) => {
+            const n = p.name || p;
+            counts.set(n, (counts.get(n) || 0) + 1);
+          });
+        } catch {}
+      })
+    );
+    let maxCount = 0, inferred = null;
+    for (const [name, count] of counts) {
+      if (count > maxCount) { maxCount = count; inferred = name; }
+    }
+    if (inferred && maxCount > 1) profileName = inferred;
   }
 
   const aKey = archiveKey(file.name, file.size);
@@ -157,7 +201,21 @@ export async function parseInstagramZip(file, onProgress) {
         return name === profileName ? "You" : name;
       });
       if (!participants.includes("You")) participants.unshift("You");
-      for (const m of parsed) { if (m.sender_name === profileName) m.sender_name = "You"; }
+      for (const m of parsed) {
+        if (m.sender_name === profileName) m.sender_name = "You";
+        if (m.reply_to?.sender === profileName) m.reply_to.sender = "You";
+      }
+      // Try to resolve reply targets by matching sender+content
+      const contentLookup = new Map();
+      for (const m of parsed) {
+        if (m.content) contentLookup.set(`${m.sender_name}\x00${m.content}`, m.id);
+      }
+      for (const m of parsed) {
+        if (m.reply_to && m.reply_to.snippet && m.reply_to.snippet !== "(media)") {
+          const id = contentLookup.get(`${m.reply_to.sender}\x00${m.reply_to.snippet}`);
+          if (id) m.reply_to.msgId = id;
+        }
+      }
 
       const first = parsed[0];
       const last = parsed[parsed.length - 1];

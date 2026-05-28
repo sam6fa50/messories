@@ -328,7 +328,9 @@ a.ms-share-link:hover .ms-share-ext { opacity: 1; color: var(--p-accent); transf
 .ms-call-missed { border-color: color-mix(in srgb, var(--p-accent) 60%, var(--p-line)); }
 .ms-call-icon { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--p-accent); color: #fff; flex-shrink: 0; }
 .ms-call-missed .ms-call-icon { background: transparent; color: var(--p-accent); box-shadow: inset 0 0 0 1px var(--p-accent); }
+.ms-call-audio:not(.ms-call-missed) { border-color: color-mix(in srgb, var(--p-accent) 35%, var(--p-line)); }
 .ms-call-video .ms-call-icon { background: var(--p-ink); }
+.ms-call-video:not(.ms-call-missed) { border-color: color-mix(in srgb, var(--p-soft) 55%, var(--p-line)); background: color-mix(in srgb, var(--p-soft) 7%, color-mix(in srgb, var(--p-panel) 60%, transparent)); }
 .ms-call-missed.ms-call-video .ms-call-icon { background: transparent; color: var(--p-ink); box-shadow: inset 0 0 0 1px var(--p-ink); }
 .ms-call-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .ms-call-kind { display: block; font-family: var(--ms-serif); font-weight: 500; font-size: 14px; color: var(--p-ink); letter-spacing: -0.005em; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

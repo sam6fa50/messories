@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { parseInstagramZip } from "../utils/parser.js";
 import { saveArchive, loadSavedMeta, loadArchiveFile, clearArchive, fmtBytes, fmtAgo } from "../utils/storage.js";
-import { clearZip } from "../utils/mediaStore.js";
+import { clearZip, warmupZip } from "../utils/mediaStore.js";
 import { archiveKey, getCachedMeta, clearParsed } from "../utils/db.js";
 
 export default function Landing({ onLoadDemo, onDataLoaded }) {
@@ -49,6 +49,8 @@ export default function Landing({ onLoadDemo, onDataLoaded }) {
         setPhase("done");
         setTimeout(() => onDataLoaded(cached.threads, cached.profile, cached.archKey), 300);
         setRestoring(false);
+        // Warm the ZIP in background so media resolves without blocking the UI
+        loadArchiveFile().then((f) => { if (f) warmupZip(f); });
         return;
       }
     }
