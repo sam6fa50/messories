@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { placeholderSrc, fmtAudioDuration } from "../utils/format.js";
-import { resolveUri } from "../utils/mediaStore.js";
+import { resolveUri, isZipReady } from "../utils/mediaStore.js";
 
 function MediaTile({ item, index, palette, onOpenItem, tileCls, style }) {
   const [src, setSrc] = useState(() => {
@@ -10,21 +10,42 @@ function MediaTile({ item, index, palette, onOpenItem, tileCls, style }) {
 
   useEffect(() => {
     if (src) return;
-    resolveUri(item.uri).then((r) => { if (r) setSrc(r); });
+    let cancelled = false;
+    let timerId;
+    const attempt = () => {
+      resolveUri(item.uri).then((r) => {
+        if (cancelled) return;
+        if (r) setSrc(r);
+        else if (!isZipReady()) timerId = setTimeout(attempt, 600);
+      });
+    };
+    attempt();
+    return () => { cancelled = true; clearTimeout(timerId); };
   }, [item.uri]);
 
-  const bg = src
-    ? `url("${src}")`
-    : `url("${placeholderSrc(item.uri, item.width || 1080, item.height || 1080, palette)}")`;
+  const placeholder = placeholderSrc(item.uri, item.width || 1080, item.height || 1080, palette);
 
   return (
     <button
       type="button"
       className={`ms-photo ms-photo-tile ${tileCls || ""}`}
       onClick={(e) => { e.stopPropagation(); onOpenItem?.(index); }}
-      style={{ backgroundImage: bg, ...style }}
+      style={{
+        backgroundImage: item.isVideo ? `url("${placeholder}")` : (src ? `url("${src}")` : `url("${placeholder}")`),
+        ...style,
+      }}
       aria-label={item.isVideo ? "Open video" : "Open photo"}
     >
+      {item.isVideo && src && (
+        <video
+          src={src}
+          preload="metadata"
+          muted
+          playsInline
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          onLoadedMetadata={(e) => { try { e.target.currentTime = 0.001; } catch {} }}
+        />
+      )}
       {item.isVideo && (
         <span className="ms-media-playoverlay" aria-hidden="true">
           <span className="ms-media-playicon">

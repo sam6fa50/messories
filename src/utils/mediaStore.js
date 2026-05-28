@@ -11,6 +11,8 @@ export function clearZip() {
   _cache.clear();
 }
 
+export function isZipReady() { return _zip !== null; }
+
 export async function warmupZip(file) {
   if (_zip) return;
   try {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { fmtAudioDuration, strHash } from "../utils/format.js";
-import { resolveUri } from "../utils/mediaStore.js";
+import { resolveUri, isZipReady } from "../utils/mediaStore.js";
 
 export default function VoiceMessage({ audio, mine }) {
   const [playing, setPlaying] = useState(false);
@@ -20,7 +20,17 @@ export default function VoiceMessage({ audio, mine }) {
   useEffect(() => {
     const u = audio.uri;
     if (u && (u.startsWith("blob:") || u.startsWith("http"))) { setResolvedUri(u); return; }
-    resolveUri(u).then(setResolvedUri);
+    let cancelled = false;
+    let timerId;
+    const attempt = () => {
+      resolveUri(u).then((r) => {
+        if (cancelled) return;
+        if (r) setResolvedUri(r);
+        else if (!isZipReady()) timerId = setTimeout(attempt, 600);
+      });
+    };
+    attempt();
+    return () => { cancelled = true; clearTimeout(timerId); };
   }, [audio.uri]);
 
   const isBlobUrl = !!resolvedUri;

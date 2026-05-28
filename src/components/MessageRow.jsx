@@ -1,11 +1,11 @@
 import { memo } from "react";
-import { fmtTime, fmtFullDateTime, placeholderSrc } from "../utils/format.js";
+import { fmtTime, fmtFullDateTime } from "../utils/format.js";
 import Avatar from "./Avatar.jsx";
 import VoiceMessage from "./VoiceMessage.jsx";
 import MediaBlock from "./MediaBlock.jsx";
 import CallCard from "./CallCard.jsx";
 
-function SharedPost({ share, palette }) {
+function SharedPost({ share }) {
   const href = share.link || "#";
   let displayHandle = null;
   if (share.original_content_owner) {
@@ -23,7 +23,6 @@ function SharedPost({ share, palette }) {
           <svg width="11" height="11" viewBox="0 0 12 12"><path d="M5 2 H10 V7 M10 2 L5.5 6.5 M9 6.5 V10 H2 V3 H5.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </span>
       </div>
-      <div className="ms-share-img" style={{ backgroundImage: `url("${placeholderSrc("share:" + (share.original_content_owner || displayHandle || "post"), 800, 800, palette)}")` }} />
       {share.post_caption && <div className="ms-share-caption">"{share.post_caption}"</div>}
     </a>
   );
@@ -103,7 +102,7 @@ const MessageRow = memo(function MessageRow({ msg, firstInRun, lastInRun, endsBl
           {hasShare && (
             <div className={`ms-bubble-wrap ${mine ? "ms-mine" : ""}`} data-time={ts}>
               <div className={bubbleCls("media")}>
-                <SharedPost share={msg.share} palette={palette} />
+                <SharedPost share={msg.share} />
               </div>
               <ReactionsRow reactions={reactions} mine={mine} />
             </div>

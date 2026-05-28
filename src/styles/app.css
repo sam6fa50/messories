@@ -232,10 +232,10 @@ img { display: block; max-width: 100%; }
 }
 .ms-row:hover .ms-bubble-wrap[data-time]::after { opacity: 1; }
 .ms-bubble-wrap.ms-mine[data-time]::after { left: auto; right: calc(100% + 8px); }
-.ms-bubble { display: inline-block; padding: var(--ms-pad-y, 9px) var(--ms-pad-x, 14px); background: var(--p-bubbleTheirs); color: var(--p-ink); font-size: 16px; line-height: 1.45; letter-spacing: -0.005em; word-break: break-word; overflow-wrap: anywhere; font-family: var(--ms-serif); font-weight: 400; text-wrap: pretty; position: relative; max-width: 100%; --r-big: 18px; --r-tight: 5px; border-radius: var(--r-big); }
+.ms-bubble { display: inline-block; padding: var(--ms-pad-y, 9px) var(--ms-pad-x, 14px); background: var(--p-bubbleTheirs); color: var(--p-ink); font-size: var(--ms-font-size, 16px); line-height: 1.45; letter-spacing: -0.005em; word-break: break-word; overflow-wrap: anywhere; font-family: var(--ms-serif); font-weight: 400; text-wrap: pretty; position: relative; max-width: 100%; --r-big: 18px; --r-tight: 5px; border-radius: var(--r-big); }
 .ms-bubble-mine { background: var(--p-bubbleMine); color: var(--p-bubbleMineInk); }
-[data-density="compact"] .ms-bubble { font-size: 15px; line-height: 1.42; }
-[data-density="cozy"] .ms-bubble { font-size: 17px; line-height: 1.5; }
+[data-density="compact"] .ms-bubble { font-size: calc(var(--ms-font-size, 16px) - 1px); line-height: 1.42; }
+[data-density="cozy"] .ms-bubble { font-size: calc(var(--ms-font-size, 16px) + 1px); line-height: 1.5; }
 /* Tail corners */
 .ms-bubble-first:not(.ms-bubble-mine) { border-bottom-left-radius: var(--r-tight); }
 .ms-bubble-middle:not(.ms-bubble-mine) { border-top-left-radius: var(--r-tight); border-bottom-left-radius: var(--r-tight); }
@@ -286,7 +286,7 @@ button.ms-photo:focus-visible { outline: 2px solid var(--p-accent); outline-offs
 .ms-bubble-mine .ms-voice-time { color: color-mix(in srgb, var(--p-bubbleMineInk) 70%, transparent); }
 
 /* shared post */
-.ms-share { display: flex; flex-direction: column; width: 280px; }
+.ms-share { display: flex; flex-direction: column; width: 280px; max-width: 100%; }
 .ms-share-head { display: flex; align-items: center; gap: 6px; padding: 8px 12px; font-size: 12px; }
 .ms-share-dot { width: 14px; height: 14px; border-radius: 50%; background: linear-gradient(135deg, var(--p-accent), var(--p-soft)); flex-shrink: 0; }
 .ms-share-handle { font-family: var(--ms-sans); font-weight: 600; color: var(--p-ink); }
@@ -361,7 +361,7 @@ a.ms-share-link:hover .ms-share-ext { opacity: 1; color: var(--p-accent); transf
 .ms-call-longest em { font-style: italic; font-weight: 500; color: var(--p-ink); }
 
 /* composer */
-.ms-thread-composer { flex-shrink: 0; padding: 12px 24px 18px; border-top: 0.5px solid var(--p-line); background: var(--p-bg); }
+.ms-thread-composer { flex-shrink: 0; padding: 12px 24px max(18px, env(safe-area-inset-bottom)); border-top: 0.5px solid var(--p-line); background: var(--p-bg); }
 .ms-composer-lock { display: flex; align-items: center; gap: 8px; justify-content: center; max-width: 760px; margin: 0 auto; padding: 11px 16px; border: 0.5px dashed var(--p-line); border-radius: 999px; font-family: var(--ms-mono); font-size: 11px; letter-spacing: 0.04em; color: var(--p-ink-muted); background: color-mix(in srgb, var(--p-panel) 30%, transparent); }
 
 /* ── INSIGHTS ── */
@@ -597,7 +597,7 @@ a.ms-share-link:hover .ms-share-ext { opacity: 1; color: var(--p-accent); transf
   .ms-search-scope-btn em { max-width: 90px; }
 }
 @media (max-width: 480px) {
-  .ms-bubble { font-size: 15px; }
+  .ms-thread-composer { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
 }
 @media (max-width: 600px) {
   .ms-search-overlay { padding-top: 8vh; padding-left: 12px; padding-right: 12px; }
@@ -646,8 +646,9 @@ a.ms-share-link:hover .ms-share-ext { opacity: 1; color: var(--p-accent); transf
 .ms-reply-clickable:active { opacity: 0.55; transform: scale(0.98); }
 
 /* ── MESSAGE FONT TWEAKS ── */
+[data-msg-font="sans"] .ms-bubble { font-family: var(--ms-sans); letter-spacing: 0; }
 [data-msg-font="serif"] .ms-bubble { font-family: var(--ms-serif); font-feature-settings: "kern", "liga", "onum"; }
-[data-msg-font="mono"] .ms-bubble { font-family: var(--ms-mono); font-size: 0.92em; letter-spacing: 0.01em; }
+[data-msg-font="mono"] .ms-bubble { font-family: var(--ms-mono); font-size: calc(var(--ms-font-size, 16px) * 0.92); letter-spacing: 0.01em; }
 
 /* ── RESTORE SAVED ARCHIVE ── */
 .ms-restore {
