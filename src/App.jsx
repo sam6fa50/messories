@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Landing from "./components/Landing.jsx";
 import ThreadList from "./components/ThreadList.jsx";
 import ThreadView from "./components/ThreadView.jsx";
 import InsightsPanel from "./components/InsightsPanel.jsx";
 import SearchOverlay from "./components/SearchOverlay.jsx";
 import { SAMPLE_THREADS, SAMPLE_PROFILE } from "./data/sampleData.js";
+import { getCachedMessages } from "./utils/db.js";
 
 const PALETTES = {
   sepia:       { name: "Sepia Album",   bg: "#f5efe6", panel: "#f0e8db", ink: "#2a2722", inkMuted: "#7a6f60", accent: "#b8836b", soft: "#d4b896", bubbleTheirs: "#ece1ce", bubbleMine: "#2a2722", bubbleMineInk: "#f5efe6", line: "#d8c9b1", placeholderBg: "#e8dcc6", placeholderFg: "#b8836b" },
@@ -25,6 +26,8 @@ export default function App() {
   const [threads, setThreads] = useState(SAMPLE_THREADS);
   const [profile, setProfile] = useState(SAMPLE_PROFILE);
   const [activeId, setActiveId] = useState(SAMPLE_THREADS[0]?.id);
+  const [archKey, setArchKey] = useState(null);
+  const [activeMessages, setActiveMessages] = useState(SAMPLE_THREADS[0]?.messages ?? null);
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [mobileShowList, setMobileShowList] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -82,14 +85,33 @@ export default function App() {
     setPendingJump({ threadId, msgId, ts: Date.now() });
   }, []);
 
-  const handleDataLoaded = useCallback((newThreads, newProfile) => {
+  const handleDataLoaded = useCallback((newThreads, newProfile, newArchKey) => {
     setThreads(newThreads);
     setProfile(newProfile);
+    setArchKey(newArchKey || null);
+    setActiveMessages(null);
     setActiveId(newThreads[0]?.id);
     setScreen("app");
   }, []);
 
-  const activeThread = threads.find((t) => t.id === activeId) || threads[0];
+  // Load messages for the active thread on demand
+  useEffect(() => {
+    if (!activeId) return;
+    if (!archKey) {
+      // Sample data: messages live on the thread object
+      const t = threads.find((t) => t.id === activeId);
+      setActiveMessages(t?.messages ?? []);
+      return;
+    }
+    setActiveMessages(null); // triggers loading state in ThreadView
+    getCachedMessages(archKey, activeId).then((msgs) => setActiveMessages(msgs || []));
+  }, [activeId, archKey, threads]);
+
+  const activeThreadStub = threads.find((t) => t.id === activeId) || threads[0];
+  const activeThread = useMemo(() => {
+    if (!activeThreadStub) return null;
+    return { ...activeThreadStub, messages: activeMessages ?? [] };
+  }, [activeThreadStub, activeMessages]);
 
   if (screen === "landing") {
     return (
@@ -136,6 +158,7 @@ export default function App() {
           pendingJump={pendingJump}
           onJumpHandled={() => setPendingJump(null)}
           onOpenSearch={() => setSearchOpen(true)}
+          messagesLoading={archKey !== null && activeMessages === null}
         />
       )}
 
@@ -150,6 +173,8 @@ export default function App() {
 
       <SearchOverlay
         threads={threads}
+        archKey={archKey}
+        activeMessages={activeMessages}
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         onJump={handleJumpToMessage}

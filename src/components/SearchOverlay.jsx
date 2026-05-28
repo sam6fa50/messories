@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { fmtTime, fmtDateHeader } from "../utils/format.js";
 import Avatar from "./Avatar.jsx";
+import { getCachedMessages } from "../utils/db.js";
 
 function highlightText(text, query) {
   if (!query) return text;
@@ -28,10 +29,12 @@ function snippet(text, query, max = 110) {
   return (before > 0 ? "…" : "") + text.slice(before, after) + (after < text.length ? "…" : "");
 }
 
-export default function SearchOverlay({ threads, open, onClose, onJump, profile, activeThreadId, activeThreadTitle }) {
+export default function SearchOverlay({ threads, archKey, activeMessages, open, onClose, onJump, profile, activeThreadId, activeThreadTitle }) {
   const [query, setQuery] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
   const [scope, setScope] = useState("all");
+  const [allMsgsByThread, setAllMsgsByThread] = useState(null);
+  const [loadingAll, setLoadingAll] = useState(false);
   const inputRef = useRef(null);
   const listRef = useRef(null);
 
@@ -42,15 +45,39 @@ export default function SearchOverlay({ threads, open, onClose, onJump, profile,
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [open]);
 
+  // Load all threads' messages from IDB when the overlay opens (once per archKey)
+  useEffect(() => {
+    if (!open || !archKey || allMsgsByThread) return;
+    setLoadingAll(true);
+    Promise.all(
+      threads.map((t) => getCachedMessages(archKey, t.id).then((msgs) => [t.id, msgs || []]))
+    ).then((pairs) => {
+      const map = {};
+      for (const [id, msgs] of pairs) map[id] = msgs;
+      setAllMsgsByThread(map);
+      setLoadingAll(false);
+    });
+  }, [open, archKey, threads, allMsgsByThread]);
+
+  // Reset cache when archive changes
+  useEffect(() => { setAllMsgsByThread(null); }, [archKey]);
+
+  function getThreadMessages(threadId) {
+    if (archKey) return allMsgsByThread?.[threadId] || [];
+    const t = threads.find((x) => x.id === threadId);
+    return t?.messages || [];
+  }
+
   const results = useMemo(() => {
     if (!query.trim()) return [];
+    if (archKey && !allMsgsByThread) return []; // still loading
     const q = query.trim().toLowerCase();
     const out = [];
     const scopedThreads = scope === "thread"
       ? threads.filter((t) => t.id === activeThreadId)
       : threads;
     scopedThreads.forEach((t) => {
-      t.messages.forEach((m) => {
+      getThreadMessages(t.id).forEach((m) => {
         if (!m.content || m.is_call) return;
         if (m.content.toLowerCase().includes(q)) {
           out.push({ threadId: t.id, threadTitle: t.title, threadColor: t.avatar_color, threadInitials: t.avatar_initials, msg: m });
@@ -59,7 +86,7 @@ export default function SearchOverlay({ threads, open, onClose, onJump, profile,
     });
     out.sort((a, b) => b.msg.timestamp_ms - a.msg.timestamp_ms);
     return out.slice(0, 50);
-  }, [query, threads, scope, activeThreadId]);
+  }, [query, threads, scope, activeThreadId, archKey, allMsgsByThread]);
 
   useEffect(() => { setActiveIdx(0); }, [query]);
 
@@ -69,7 +96,6 @@ export default function SearchOverlay({ threads, open, onClose, onJump, profile,
     el?.scrollIntoView({ block: "nearest" });
   }, [activeIdx]);
 
-  // Tab key toggles scope
   function handleKeyDown(e) {
     if (e.key === "Escape") { e.preventDefault(); onClose(); }
     else if (e.key === "Tab" && activeThreadId) { e.preventDefault(); setScope((s) => s === "all" ? "thread" : "all"); }
@@ -95,7 +121,8 @@ export default function SearchOverlay({ threads, open, onClose, onJump, profile,
             <path d="M10.5 10.5 L14 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
           </svg>
           <input ref={inputRef} value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={handleKeyDown} placeholder="Search every message…" aria-label="Search query" />
-          <span className="ms-search-modal-esc">esc</span>
+          {loadingAll && <span className="ms-parse-spin" aria-hidden="true" style={{ flexShrink: 0 }} />}
+          {!loadingAll && <span className="ms-search-modal-esc">esc</span>}
         </div>
 
         {activeThreadId && (
@@ -123,7 +150,7 @@ export default function SearchOverlay({ threads, open, onClose, onJump, profile,
           </div>
         )}
 
-        {query.trim() && results.length === 0 && (
+        {query.trim() && !loadingAll && results.length === 0 && (
           <div className="ms-search-noresults"><em>"{query}"</em> doesn't appear anywhere in your archive.</div>
         )}
 

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import Avatar from "./Avatar.jsx";
 import MessageRow from "./MessageRow.jsx";
 import MediaViewer from "./MediaViewer.jsx";
@@ -7,7 +8,20 @@ import { fmtYearRange } from "../utils/format.js";
 
 const SENDER_PALETTE = ["#b8836b", "#a64b2a", "#5c6b5a", "#6b7a99", "#3a2a1f", "#8c6a4a"];
 
-export default function ThreadView({ thread, palette, density, onToggleInsights, insightsOpen, onBack, narrow, profile, pendingJump, onJumpHandled, onOpenSearch }) {
+// Estimated row heights for virtualizer initial pass
+function estimateSize(item) {
+  if (item.kind === "date") return 56;
+  const m = item.msg;
+  if (m.is_call) return 72;
+  let h = item.firstInRun ? 52 : 36;
+  if (m.photos || m.videos) h += 280;
+  if (m.audio_files) h += 64;
+  if (m.reactions?.length) h += 28;
+  if (m.reply_to) h += 40;
+  return h;
+}
+
+export default function ThreadView({ thread, palette, density, onToggleInsights, insightsOpen, onBack, narrow, profile, pendingJump, onJumpHandled, onOpenSearch, messagesLoading }) {
   const scrollRef = useRef(null);
   const [highlightId, setHighlightId] = useState(null);
   const [viewerIdx, setViewerIdx] = useState(-1);
@@ -18,10 +32,10 @@ export default function ThreadView({ thread, palette, density, onToggleInsights,
       if (!m.photos && !m.videos) return;
       const senderName = m.sender_name === "You" ? (profile?.displayName || "You") : m.sender_name;
       (m.photos || []).forEach((p) => out.push({ ...p, isVideo: false, msgId: m.id, ts: m.timestamp_ms, senderName, caption: m.content || null }));
-      (m.videos || []).forEach((v) => out.push({ ...v, isVideo: true, msgId: m.id, ts: m.timestamp_ms, senderName, caption: m.content || null }));
+      (m.videos || []).forEach((v) => out.push({ ...v, isVideo: true,  ts: m.timestamp_ms, senderName, caption: m.content || null }));
     });
     return out;
-  }, [thread.id, profile]);
+  }, [thread.id, thread.messages, profile]);
 
   const mediaStartByMsg = useMemo(() => {
     const map = {};
@@ -38,34 +52,8 @@ export default function ThreadView({ thread, palette, density, onToggleInsights,
   useEffect(() => { setViewerIdx(-1); }, [thread.id]);
 
   useEffect(() => {
-    if (scrollRef.current && !pendingJump) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
     setHighlightId(null);
   }, [thread.id]);
-
-  const scrollToMsg = useCallback((msgId) => {
-    const root = scrollRef.current;
-    if (!root) return false;
-    const target = root.querySelector(`[data-msg-id="${msgId}"]`);
-    if (!target) return false;
-    const rootRect = root.getBoundingClientRect();
-    const tRect = target.getBoundingClientRect();
-    const offset = tRect.top - rootRect.top + root.scrollTop - rootRect.height / 2 + tRect.height / 2;
-    root.scrollTo({ top: offset, behavior: "smooth" });
-    setHighlightId(msgId);
-    setTimeout(() => setHighlightId((cur) => (cur === msgId ? null : cur)), 2000);
-    return true;
-  }, []);
-
-  useEffect(() => {
-    if (!pendingJump || pendingJump.threadId !== thread.id) return;
-    const id = setTimeout(() => {
-      scrollToMsg(pendingJump.msgId);
-      onJumpHandled?.();
-    }, 60);
-    return () => clearTimeout(id);
-  }, [pendingJump, thread.id, scrollToMsg, onJumpHandled]);
 
   const senderColors = useMemo(() => {
     const map = {};
@@ -87,16 +75,50 @@ export default function ThreadView({ thread, palette, density, onToggleInsights,
 
   const grouped = useMemo(() => groupMessages(decorated), [decorated]);
 
+  const virtualizer = useVirtualizer({
+    count: grouped.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: (i) => estimateSize(grouped[i]),
+    overscan: 20,
+    paddingEnd: 80,
+  });
+
+  // Scroll to bottom on thread change (not when loading)
+  useEffect(() => {
+    if (messagesLoading || !grouped.length) return;
+    virtualizer.scrollToIndex(grouped.length - 1, { align: "end", behavior: "auto" });
+  }, [thread.id, messagesLoading, grouped.length]);
+
+  const scrollToMsg = useCallback((msgId) => {
+    const idx = grouped.findIndex((item) => item.kind === "msg" && item.msg.id === msgId);
+    if (idx < 0) return false;
+    virtualizer.scrollToIndex(idx, { align: "center", behavior: "smooth" });
+    setHighlightId(msgId);
+    setTimeout(() => setHighlightId((cur) => (cur === msgId ? null : cur)), 2000);
+    return true;
+  }, [grouped, virtualizer]);
+
   const handleCallJump = useCallback((pairId, kind) => {
-    const root = scrollRef.current;
-    if (!root) return;
-    const target = root.querySelector(`[data-call-pair="${pairId}"][data-call-kind="${kind}"]`);
-    if (!target) return;
-    const id = parseInt(target.getAttribute("data-msg-id"), 10);
-    scrollToMsg(id);
-  }, [scrollToMsg]);
+    const idx = grouped.findIndex((item) =>
+      item.kind === "msg" && item.msg.call_pair_id === pairId && item.msg.call_kind === kind
+    );
+    if (idx >= 0) {
+      const msgId = grouped[idx].msg.id;
+      virtualizer.scrollToIndex(idx, { align: "center", behavior: "smooth" });
+      setHighlightId(msgId);
+      setTimeout(() => setHighlightId((cur) => (cur === msgId ? null : cur)), 2000);
+    }
+  }, [grouped, virtualizer]);
+
+  useEffect(() => {
+    if (!pendingJump || pendingJump.threadId !== thread.id) return;
+    const id = setTimeout(() => { scrollToMsg(pendingJump.msgId); onJumpHandled?.(); }, 80);
+    return () => clearTimeout(id);
+  }, [pendingJump, thread.id, scrollToMsg, onJumpHandled]);
 
   const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || "");
+  const virtualItems = virtualizer.getVirtualItems();
+  const totalSize = virtualizer.getTotalSize();
 
   return (
     <section className="ms-thread">
@@ -132,31 +154,54 @@ export default function ThreadView({ thread, palette, density, onToggleInsights,
       </header>
 
       <div className="ms-thread-scroll" ref={scrollRef}>
-        <div className="ms-thread-archive-mark">
-          archived · read-only · loaded {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-        </div>
-        <div className="ms-msglist" data-density={density} data-highlight={highlightId}>
-          {grouped.map((item) =>
-            item.kind === "date" ? (
-              <div key={item.id} className="ms-date-sep"><span>{item.label}</span></div>
-            ) : (
-              <MessageRow
-                key={item.msg.id}
-                msg={item.msg}
-                firstInRun={item.firstInRun}
-                lastInRun={item.lastInRun}
-                endsBlock={item.endsBlock}
-                palette={palette}
-                density={density}
-                profile={profile}
-                onJump={handleCallJump}
-                onScrollToMsg={scrollToMsg}
-                onOpenMedia={handleOpenMedia}
-                highlight={highlightId === item.msg.id}
-              />
-            )
-          )}
-        </div>
+        {messagesLoading ? (
+          <div className="ms-thread-loading">
+            <span className="ms-parse-spin" aria-hidden="true" />
+            <span>Loading messages…</span>
+          </div>
+        ) : (
+          <div style={{ height: totalSize, position: "relative" }}>
+            <div className="ms-thread-archive-mark" style={{ position: "absolute", top: 0, left: 0, right: 0 }}>
+              archived · read-only · loaded {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            </div>
+            <div
+              className="ms-msglist"
+              data-density={density}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                transform: `translateY(${virtualItems[0]?.start ?? 0}px)`,
+              }}
+            >
+              {virtualItems.map((vRow) => {
+                const item = grouped[vRow.index];
+                return (
+                  <div key={vRow.key} data-index={vRow.index} ref={virtualizer.measureElement}>
+                    {item.kind === "date" ? (
+                      <div className="ms-date-sep"><span>{item.label}</span></div>
+                    ) : (
+                      <MessageRow
+                        msg={item.msg}
+                        firstInRun={item.firstInRun}
+                        lastInRun={item.lastInRun}
+                        endsBlock={item.endsBlock}
+                        palette={palette}
+                        density={density}
+                        profile={profile}
+                        onJump={handleCallJump}
+                        onScrollToMsg={scrollToMsg}
+                        onOpenMedia={handleOpenMedia}
+                        highlight={highlightId === item.msg.id}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="ms-thread-composer" aria-hidden="true">

@@ -197,16 +197,17 @@ img { display: block; max-width: 100%; }
 .ms-head-icon { appearance: none; border: 0.5px solid var(--p-line); background: transparent; width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--p-ink-muted); cursor: pointer; }
 .ms-head-icon:hover { background: var(--p-panel); color: var(--p-ink); }
 .ms-thread-scroll { flex: 1; overflow-y: auto; padding: 16px 0 24px; }
-.ms-thread-archive-mark { text-align: center; font-family: var(--ms-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--p-ink-muted); text-transform: lowercase; margin: 4px 0 24px; }
+.ms-thread-archive-mark { text-align: center; font-family: var(--ms-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--p-ink-muted); text-transform: lowercase; padding: 12px 0 0; }
+.ms-thread-loading { display: flex; align-items: center; justify-content: center; gap: 10px; height: 100%; font-family: var(--ms-mono); font-size: 12px; color: var(--p-ink-muted); letter-spacing: 0.06em; }
 .ms-msglist { display: flex; flex-direction: column; gap: 0; padding: 0 24px; max-width: 760px; margin: 0 auto; }
-.ms-date-sep { display: flex; align-items: center; justify-content: center; margin: 22px 0 12px; font-family: var(--ms-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--p-ink-muted); content-visibility: auto; contain-intrinsic-size: auto 56px; }
+.ms-date-sep { display: flex; align-items: center; justify-content: center; margin: 22px 0 12px; font-family: var(--ms-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--p-ink-muted); }
 .ms-date-sep span { padding: 0 14px; position: relative; }
 .ms-date-sep span::before, .ms-date-sep span::after { content: ""; position: absolute; top: 50%; width: 32px; height: 0.5px; background: var(--p-line); }
 .ms-date-sep span::before { right: 100%; }
 .ms-date-sep span::after { left: 100%; }
 
 /* ── ROWS ── */
-.ms-row { display: flex; gap: 10px; align-items: flex-start; position: relative; content-visibility: auto; contain-intrinsic-size: auto 72px; }
+.ms-row { display: flex; gap: 10px; align-items: flex-start; position: relative; }
 .ms-row-mine { flex-direction: row-reverse; }
 .ms-row-start { margin-top: 10px; }
 .ms-row-stack { margin-top: 2px; }

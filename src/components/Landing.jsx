@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { parseInstagramZip } from "../utils/parser.js";
 import { saveArchive, loadSavedMeta, loadArchiveFile, clearArchive, fmtBytes, fmtAgo } from "../utils/storage.js";
 import { clearZip } from "../utils/mediaStore.js";
+import { archiveKey, getCachedMeta, clearParsed } from "../utils/db.js";
 
 export default function Landing({ onLoadDemo, onDataLoaded }) {
   const [drag, setDrag] = useState(false);
@@ -30,7 +31,7 @@ export default function Landing({ onLoadDemo, onDataLoaded }) {
       });
       saveArchive(file);
       setPhase("done");
-      setTimeout(() => onDataLoaded(result.threads, result.profile), 500);
+      setTimeout(() => onDataLoaded(result.threads, result.profile, result.archKey), 500);
     } catch (err) {
       setError(err.message || "Failed to parse archive.");
       setPhase("error");
@@ -39,6 +40,19 @@ export default function Landing({ onLoadDemo, onDataLoaded }) {
 
   async function handleRestore() {
     setRestoring(true);
+    // Fast path: check if parsed data is already in IDB — skip ZIP entirely
+    const meta = await loadSavedMeta();
+    if (meta) {
+      const aKey = archiveKey(meta.name, meta.size);
+      const cached = await getCachedMeta(aKey);
+      if (cached?.threads?.length) {
+        setPhase("done");
+        setTimeout(() => onDataLoaded(cached.threads, cached.profile, cached.archKey), 300);
+        setRestoring(false);
+        return;
+      }
+    }
+    // Slow path: load ZIP from IDB and parse
     const file = await loadArchiveFile();
     if (!file) { setRestoring(false); setSavedMeta(null); return; }
     await handleFile(file);
@@ -111,7 +125,7 @@ export default function Landing({ onLoadDemo, onDataLoaded }) {
                     <button className="ms-btn ms-btn-primary" onClick={handleRestore} disabled={restoring}>
                       {restoring ? "Loading…" : "Restore →"}
                     </button>
-                    <button className="ms-btn ms-btn-ghost ms-restore-clear" onClick={async () => { await clearArchive(); clearZip(); setSavedMeta(null); }} title="Forget saved archive" aria-label="Forget saved archive">×</button>
+                    <button className="ms-btn ms-btn-ghost ms-restore-clear" onClick={async () => { await clearArchive(); await clearParsed(); clearZip(); setSavedMeta(null); }} title="Forget saved archive" aria-label="Forget saved archive">×</button>
                   </div>
                 </div>
               )}
